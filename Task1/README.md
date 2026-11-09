@@ -14,7 +14,7 @@ uv run jupyter nbconvert --to notebook --execute --inplace task1_analysis.ipynb
 # or open it: uv run jupyter lab task1_analysis.ipynb, then Restart & Run All
 ```
 
-A full run takes about 1–2 minutes. The first run parses the xlsx (~15 s) and caches it as `cache/raw.parquet`. Every CSV in `outputs/` and every PNG in `plots/` is regenerated on each run, and all randomness is seeded.
+A full run takes about 1–2 minutes. The first run parses the xlsx (~15 s) and caches it as `cache/raw.parquet`. Every CSV in this folder and every PNG in `plots/` is regenerated on each run, and all randomness is seeded.
 
 ## What's here
 
@@ -28,13 +28,15 @@ A full run takes about 1–2 minutes. The first run parses the xlsx (~15 s) and 
 | `cyclone/forecasting.py` | persistence / ARIMA / gradient boosting, rolling-origin evaluation by regime |
 | `cyclone/plots.py` | all figures |
 
-### Outputs (`outputs/`)
+### Output CSVs (in this folder)
+
+The first four are the required deliverables; the last three are supporting detail.
 
 | file | one row per | key columns |
 |---|---|---|
 | `shutdown_periods.csv` | shutdown | start, end, duration_h, missing_pct |
 | `anomalous_periods.csv` | anomalous event | start, end, duration_min, detector, state, top_variables (tag ± robust σ), minutes_since_restart, minutes_to_next_shutdown |
-| `clusters_summary.csv` | operating state | mean / std / p05 / p50 / p95 of every tag and derived feature, share of running time, episode count and duration stats |
+| `clusters_summary.csv` | operating state | description, mean / std / p05 / p50 / p95 of every tag and derived feature, share of running time, episode count and duration stats |
 | `forecasts.csv` | (origin, horizon) | target_time, regime, y_true, pred_persistence, pred_arima, pred_gbm |
 | `forecast_metrics.csv` | (subset, model) | RMSE, MAE |
 | `data_quality.csv` | sensor | counts of each status code, invalid, dropout, stale, interpolated and still-missing samples |

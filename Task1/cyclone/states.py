@@ -136,6 +136,16 @@ def episodes(labels: pd.Series) -> pd.DataFrame:
     })
 
 
+DESCRIPTIONS = {
+    "High load": "Hottest gas (~900 C) and strongest draft (~-200 Pa inlet): full-rate running",
+    "Normal load": "Gas ~880 C, inlet draft ~-165 Pa, low variability: the bulk of running time",
+    "Unstable draft": "Normal temperatures but draft variability ~5x normal and weaker draft: process upset, fan/damper control hunting",
+    "Degraded: high outlet ΔT": "Outlet gas reads ~140 C below inlet while everything else is normal: outlet thermocouple drift, not a process state",
+    "Trip cool-down (fan off)": "Draft collapses to ~0 Pa, gas falls ~65 C per 30 min from ~800 C: ID fan has stopped",
+    "Heat-up / warm idle (fan off)": "Draft ~0 Pa, gas ~620 C, material ~480 C: burner on before the fan starts, or a warm hold",
+}
+
+
 def profile(df: pd.DataFrame, feats: pd.DataFrame, labels: pd.Series, names: dict) -> pd.DataFrame:
     """clusters_summary: distribution of every tag + frequency/duration per state."""
     ep = episodes(labels)
@@ -143,7 +153,8 @@ def profile(df: pd.DataFrame, feats: pd.DataFrame, labels: pd.Series, names: dic
     cols = SENSORS + ["temp_drop", "draft_dp", "inlet_temp_std_1h"]
     rows = []
     for s, g in feats.groupby(labels):
-        row = {"state_id": s, "state": names[s], "share_of_running_pct": round(100 * len(g) / len(labels), 1)}
+        row = {"state_id": s, "state": names[s], "description": DESCRIPTIONS.get(names[s], ""),
+               "share_of_running_pct": round(100 * len(g) / len(labels), 1)}
         for c in cols:
             q = g[c].quantile([0.05, 0.5, 0.95])
             row |= {f"{c}_mean": g[c].mean(), f"{c}_std": g[c].std(),

@@ -59,12 +59,16 @@ def load_raw(xlsx_path: Path, cache_dir: Path) -> pd.DataFrame:
     """Read the export as strings (so status codes survive), cached as parquet."""
     cache = cache_dir / "raw.parquet"
     if cache.exists():
-        return pd.read_parquet(cache)
-    raw = pd.read_excel(xlsx_path, sheet_name="internship-data-1", dtype=str)
-    raw["time"] = pd.to_datetime(raw["time"])
-    raw = raw.set_index("time")[SENSORS]
-    cache_dir.mkdir(parents=True, exist_ok=True)
-    raw.to_parquet(cache)
+        raw = pd.read_parquet(cache)
+    else:
+        raw = pd.read_excel(xlsx_path, sheet_name="internship-data-1", dtype=str)
+        raw["time"] = pd.to_datetime(raw["time"])
+        raw = raw.set_index("time")[SENSORS]
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        raw.to_parquet(cache)
+    # One time unit everywhere: pandas 3 parses to microseconds, pandas 2 to nanoseconds.
+    # Downstream code compares integer index steps against Timedelta values (ns).
+    raw.index = raw.index.as_unit("ns")
     return raw
 
 
