@@ -1,0 +1,16 @@
+subset,model,n,rmse,mae
+all,persistence,63144,19.38,11.8
+all,arima,63144,16.75,9.8
+all,gbm,63144,15.08,9.5
+disturbed,persistence,2868,55.39,38.71
+disturbed,arima,2868,52.17,35.32
+disturbed,gbm,2868,41.67,27.92
+shut_down,persistence,11448,4.95,0.93
+shut_down,arima,11448,6.22,1.29
+shut_down,gbm,11448,5.55,2.54
+steady_running,persistence,48684,17.28,12.74
+steady_running,arima,48684,13.8,10.23
+steady_running,gbm,48684,13.58,10.04
+transition,persistence,144,26.72,20.78
+transition,arima,144,37.41,31.68
+transition,gbm,144,17.23,13.06

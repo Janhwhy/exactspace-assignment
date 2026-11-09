@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+.ipynb_checkpoints/
+.DS_Store
+
+# raw inputs are provided separately, not committed
+given/
+Task1/cache/
+
+# RAG index is rebuilt by `rag_prototype.py ingest`
+Task2/prototype/index/

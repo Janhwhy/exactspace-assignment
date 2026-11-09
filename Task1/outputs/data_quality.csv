@@ -1,0 +1,7 @@
+sensor,Comm Fail,Configure,I/O Timeout,Not Connect,Scan Timeout,Unit Down,physically_invalid,dropout_ambient,stale_value,missing_timestamps,interpolated,still_missing
+Cyclone_Inlet_Gas_Temp,2,108,470,723,17,0,0,34,913,861,115,2984
+Cyclone_Gas_Outlet_Temp,2,108,470,723,17,1,28,1,904,861,122,2975
+Cyclone_Material_Temp,2,108,470,723,17,271,86,1146,3063,861,725,5086
+Cyclone_Inlet_Draft,2,108,470,723,17,2,0,0,748,861,109,2822
+Cyclone_cone_draft,2,108,470,723,17,0,4,0,1309,861,334,3160
+Cyclone_Outlet_Gas_draft,2,108,470,723,17,1,0,0,748,861,103,2827

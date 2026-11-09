@@ -1,0 +1,27 @@
+[project]
+name = "cyclone-take-home"
+version = "0.1.0"
+description = "ExactSpace data science take-home: cyclone sensor analysis (Task 1) and a RAG prototype (Task 2)"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    # Task 1
+    "pandas>=2.2",
+    "pyarrow>=17",
+    "openpyxl>=3.1",
+    "numpy>=1.26",
+    "scikit-learn>=1.5",
+    "statsmodels>=0.14",
+    "matplotlib>=3.9",
+    "jupyter>=1.1",
+    # Task 2
+    "pymupdf>=1.24",
+    "sentence-transformers>=3.0",
+    "faiss-cpu>=1.8",
+    "rank-bm25>=0.2.2",
+    "requests>=2.32",
+    # Slides
+    "python-pptx>=1.0",
+]
+
+[tool.uv]
+package = false
