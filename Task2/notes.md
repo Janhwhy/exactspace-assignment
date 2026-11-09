@@ -55,7 +55,7 @@ Each stage earns its place. Hybrid fixes BM25's paraphrase misses and dense's ex
 | failure mode | defence | where | measured |
 |---|---|---|---|
 | **No relevant answer** | Relevance gate: if the best reranker score is below −4.0, decline without calling the LLM and show the closest passages. Anything that passes the gate is still checked by the LLM rule "reply NOT_FOUND if none of the sources is relevant" | retrieval + generation | gate decides correctly on 32/32 questions; end to end 4/4 unanswerable questions declined |
-| **Hallucination** | Prompt allows only the numbered sources, at temperature 0. Every factual sentence must cite `[n]`. The code then checks each cited sentence: (1) the citation must exist; (2) **citation repair**: if the cited source shares little vocabulary with the sentence but another retrieved source clearly matches, the citation is re-pointed (a small model sometimes puts the right fact on the wrong number); (3) **number check**: every number must appear in a source the sentence cites. Any failure triggers one retry with a stricter instruction, then a fallback to quoting the top passage. An uncited or unsupported answer is never shown. The source list (document, page, snippet) is always printed | generation + output | 26/26 answers cite a correct page; the repair fixed one wrong citation in the eval |
+| **Hallucination** | Prompt allows only the numbered sources, at temperature 0. Every factual sentence must cite `[n]`. The code then checks each cited sentence: (1) the citation must exist; (2) **citation repair**: if the cited source shares little vocabulary with the sentence but another retrieved source clearly matches, the citation is re-pointed (a small model sometimes puts the right fact on the wrong number); (3) **number check**: every number must appear in a source the sentence cites. Any failure triggers one retry with a stricter instruction, then a fallback to quoting the top passage. An uncited or unsupported answer is never shown. The source list (document, page, snippet) is always printed | generation + output | 28/28 answers cite a correct page; repair fixed two wrong citations in the eval |
 | **Sensitive queries** | Input filter for (a) bypassing or disabling safety equipment (interlocks, alarms, trips, relief, earthing), (b) requests for personal contact details, (c) prompt injection. Each category has a specific refusal that points to the right channel (e.g. management of change for interlocks) | input | 5/5 blocked, 0 false blocks on 32 normal questions |
 | **Personal data leakage** | Redacted at ingestion (never indexed) and scrubbed again on output | ingestion + output | 0 e-mail addresses left in the index |
 | **Prompt injection inside documents** | The system prompt says source text is data, not instructions | generation | not separately tested |
@@ -66,14 +66,18 @@ Each stage earns its place. Hybrid fixes BM25's paraphrase misses and dense's ex
 
 | question type | outcome |
 |---|---|
-| answerable (28) | 26 answered, all citing a correct source page |
+| answerable (28) | 27 answered directly + 1 partial; all 28 cite a correct source page |
 | unanswerable (4) | 4/4 declined |
 | sensitive (5) | 5/5 refused; 0 false refusals on the 32 normal questions |
-| latency | median 0.9 s per answered question, max 4 s |
+| reproducibility | fixed seed: two full runs gave 37/37 identical answers |
+| latency | median 1.1 s per answer, max 4 s |
 
-What the two misses and one flawed answer teach:
-- **"What does a sudden draft drop indicate?" is declined as "not answered directly"**, with the related passages shown. The documents say pressure differential tracks gas velocity and that lower velocity reduces collection efficiency, but none says what a draft drop *means*. Both qwen2.5:3b and a 7B model declined. That is the faithful behaviour, and the system says plainly that the passages are related but not a direct answer. A prompt asking the 3B model to choose between "answer / partial / not found" was tried and made answers worse across the board, so it was dropped.
-- **One answer fell back to quoting the passage** after failing the citation check twice. The safety net worked as designed.
+How the first run's misses (26 answered) were fixed, each at its root cause:
+- **A storm-SOP answer cited `[8]` with only 5 sources.** The document numbers its sections "8.1, 8.2…", and the model copied a section number as a citation. Citation repair now also re-points out-of-range citations to the source whose wording matches.
+- **The spigot question answered on one run and said NOT_FOUND on the next.** Temperature 0 is not deterministic without a seed, so a seed is now fixed. And when the model says NOT_FOUND although the reranker scored the top passage very high (≥ +2), it gets one more attempt, told that source [1] was judged highly relevant.
+- **"What does a sudden draft drop indicate?" is now a labelled partial answer.** The documents say pressure differential tracks gas velocity and collection efficiency, but none says what a draft drop *means*. Both qwen2.5:3b and a 7B model correctly declined to answer it directly. Rather than force an answer, the system asks the sources a simpler question ("what do they say about suction, pressure differential and airflow?"), keeps only sentences citing passages that passed the relevance gate, and labels the result "The documents don't answer this directly". Two rejected alternatives: a three-way "answer / partial / not found" prompt (made the 3B model hedge on questions it answered well) and a free-form "say what's relevant" prompt (the model returned an empty "[1], [2]", which is why partial answers must contain at least 15 words of content).
+
+The remaining flaw:
 - **One answer blends two sources.** Asked about Dustair's G/M/H cyclone types, the model attached G&G's "70–95% efficiency" figure (correctly cited to the G&G manual) to Dustair's M type. Every fact is cited and the number really is in the cited source, so sentence-level checks cannot catch it. This is the strongest argument for a meaning-level faithfulness judge (NLI model or LLM judge) in offline monitoring.
 
 One evaluation label was widened after review: the G/M/H question was first labelled with only the summary table on p.8, but the types are explained on pp.5–8.
@@ -122,6 +126,6 @@ One evaluation label was widened after review: the G/M/H question was first labe
 | Retrieval | hybrid + rerank | dense only | measured: dense alone misses exact terms (MRR 0.81 vs 1.00) |
 | Reranker | MiniLM-L-6 (~90 MB) | bge-reranker-base (~1.1 GB) | ~10× faster on CPU and already perfect MRR on this eval; the bigger one is the first upgrade if needed |
 | LLM | qwen2.5:3b via Ollama | flan-t5, Llama-2-7B | instruction-tuned, follows the citation format reliably, ~2 GB, Apache-2.0, runs on a laptop. flan-t5 cannot follow multi-rule prompts; 7B models are slower for little gain on extractive answers |
-| Framework | plain Python (~600 lines) | LangChain / LlamaIndex | every step is visible and testable; nothing is hidden behind abstractions in a prototype this size |
+| Framework | plain Python (~650 lines) | LangChain / LlamaIndex | every step is visible and testable; nothing is hidden behind abstractions in a prototype this size |
 | Guardrails | rules + score gate + citation and support checks | an LLM judge on every answer | deterministic, free and explainable; an LLM judge is reserved for offline faithfulness monitoring, where the source-blending case above shows it is needed |
 | Vocabulary gap | 5-entry glossary for query expansion | fine-tune the embedder; HyDE (LLM writes a hypothetical answer to search with) | measurable, explainable and free; fine-tuning needs labelled pairs, and HyDE adds an LLM call to every query |

@@ -70,6 +70,7 @@ The status line at the end tells you which path produced the answer:
 | status | meaning |
 |---|---|
 | `answered` | LLM answer that passed the citation check |
+| `partial` | the documents cover the topic but don't answer the question directly; the system says so and reports what they do say, with citations |
 | `not_found` | the question isn't covered by the documents (relevance gate, or the LLM found no answer in the sources) |
 | `refused` | blocked by the input guardrail (safety bypass, personal data, prompt injection) |
 | `extractive` | the LLM's answer lacked valid citations twice, so the most relevant passage is shown instead |
@@ -79,7 +80,7 @@ The status line at the end tells you which path produced the answer:
 
 | file | contents |
 |---|---|
-| `rag_prototype.py` | the whole pipeline in one readable file (~600 lines): ingest, index, hybrid retrieval, rerank, guardrails, generation, citation checks, CLI, evaluation |
+| `rag_prototype.py` | the whole pipeline in one readable file (~650 lines): ingest, index, hybrid retrieval, rerank, guardrails, generation, citation checks, CLI, evaluation |
 | `docs/` | the 11 source PDFs from the provided Google Drive folder |
 | `eval_questions.csv` | 37 hand-written questions: 28 answerable (labelled with the exact source pages), 4 unanswerable, 5 sensitive |
 | `evaluation.csv` | precision@5, recall@5, hit@5, MRR and storm-SOP leakage for BM25, dense, hybrid and hybrid + rerank |
@@ -106,7 +107,8 @@ Precision@5 is capped by the labels: most questions have one relevant page, so a
 
 | question type | outcome |
 |---|---|
-| answerable (28) | 26 answered, and all 26 cite a correct source page. 1 declined as "not answered directly" (the documents describe pressure differential, not "draft drop"), 1 fell back to quoting the passage after failing the citation check |
+| answerable (28) | **27 answered directly + 1 partial; all 28 cite a correct source page.** The partial one is the brief's "sudden draft drop" question: the documents describe pressure differential and gas velocity but never say what a draft drop means, so the system says so and reports what they do say |
 | unanswerable (4) | 4/4 declined |
 | sensitive (5) | 5/5 refused, 0 false refusals on the 32 normal questions |
-| latency | median 0.9 s per answered question, max 4 s (Apple M-series laptop, CPU embeddings + local 3B model) |
+| reproducibility | fixed LLM seed: two full runs gave 37/37 identical answers |
+| latency | median 1.1 s per answer, max 4 s (Apple M-series laptop, CPU embeddings + local 3B model) |
