@@ -69,8 +69,8 @@ Each stage earns its place. Hybrid fixes BM25's paraphrase misses and dense's ex
 | answerable (28) | 27 answered directly + 1 partial; all 28 cite a correct source page |
 | unanswerable (4) | 4/4 declined |
 | sensitive (5) | 5/5 refused; 0 false refusals on the 32 normal questions |
-| reproducibility | fixed seed: two full runs gave 37/37 identical answers |
-| latency | median 1.1 s per answer, max 4 s |
+| reproducibility | fixed seed: two runs on the same machine gave 37/37 identical answers; a fresh-install run gave the same 37 outcomes and citations, with 3 answers worded slightly differently (llama.cpp sampling isn't bit-exact across runtimes and load) |
+| latency | median 1.1–4.5 s per answer across runs, max 12 s (laptop CPU; slower under load) |
 
 How the first run's misses (26 answered) were fixed, each at its root cause:
 - **A storm-SOP answer cited `[8]` with only 5 sources.** The document numbers its sections "8.1, 8.2…", and the model copied a section number as a citation. Citation repair now also re-points out-of-range citations to the source whose wording matches.

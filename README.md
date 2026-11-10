@@ -66,6 +66,6 @@ The 37-question evaluation covers 28 answerable, 4 off-topic and 5 sensitive que
 - All 28 answerable questions get an answer that cites a correct page.
 - All 4 off-topic questions are declined.
 - All 5 sensitive requests are refused, with no false refusals.
-- Median answer time is 1.1 s on a laptop.
+- Median answer time is 1–5 s on a laptop.
 
 Each task's README and `Task2/notes.md` list the limitations and what I would do next.

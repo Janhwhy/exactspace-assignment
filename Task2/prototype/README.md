@@ -110,5 +110,5 @@ Precision@5 is capped by the labels: most questions have one relevant page, so a
 | answerable (28) | **27 answered directly + 1 partial; all 28 cite a correct source page.** The partial one is the brief's "sudden draft drop" question: the documents describe pressure differential and gas velocity but never say what a draft drop means, so the system says so and reports what they do say |
 | unanswerable (4) | 4/4 declined |
 | sensitive (5) | 5/5 refused, 0 false refusals on the 32 normal questions |
-| reproducibility | fixed LLM seed: two full runs gave 37/37 identical answers |
-| latency | median 1.1 s per answer, max 4 s (Apple M-series laptop, CPU embeddings + local 3B model) |
+| reproducibility | fixed LLM seed: two runs on the same machine gave 37/37 identical answers; a run from a fresh install gave the same 37 outcomes and citations, with 3 answers worded slightly differently |
+| latency | median 1.1–4.5 s per answer across runs, max 12 s (Apple M-series laptop, CPU embeddings + local 3B model; slower when the machine is busy) |
