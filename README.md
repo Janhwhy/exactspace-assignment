@@ -18,6 +18,7 @@ The summary deck is `Final_Presentation.pptx` (9 slides, with speaker notes).
 | `Task1/cyclone/` | the code the notebook calls (one module per step) |
 | `Task1/README.md` | how to run, method table, headline results, limitations |
 | `Task2/architecture_diagram.pptx` | system architecture, plus the production and scaling view |
+| `Task2/architecture_diagram.png` | the same architecture as an image, exported from `architecture_diagram.drawio` (editable in draw.io) |
 | `Task2/notes.md` | design choices, guardrails, evaluation, monitoring, scaling, trade-offs |
 | `Task2/prototype/` | `rag_prototype.py`, the 11 PDFs, the evaluation question set and results, `README.md` |
 | `pyproject.toml`, `uv.lock` | the pinned Python 3.12 environment for both tasks |
