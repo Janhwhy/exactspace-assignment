@@ -38,7 +38,7 @@ cd Task1
 uv run jupyter nbconvert --to notebook --execute --inplace task1_analysis.ipynb
 ```
 
-A run takes about 1–2 minutes and regenerates every CSV and plot. The notebook is also saved with its outputs, so it can be read without running it.
+A run takes about 2–3 minutes and regenerates every CSV and plot. The notebook is also saved with its outputs, so it can be read without running it.
 
 **Task 2** needs [Ollama](https://ollama.com) with one model pulled:
 
@@ -58,7 +58,7 @@ The embedding and reranker models (~220 MB) download from Hugging Face on first 
 - 39 shutdowns and 6,286 h of downtime, 19.9% of the record. The threshold comes from the data (Otsu, 477 °C), and moving it by ±50 °C changes downtime by less than 2%.
 - Six operating states. ID-fan trips are the dominant incident: 123 recovered trips and 62 extended ones, and 23 of the 39 shutdowns start with an extended trip.
 - Part of what looks like process behaviour is really instrument fault: outlet thermocouple drift, and an unreliable material temperature transmitter.
-- 1-hour forecast: gradient boosting cuts RMSE against persistence by 21% in steady running and 25% in disturbed operation. Errors are reported per regime, because disturbed windows are 4.5% of the test set but carry about 35% of the error.
+- 1-hour forecast: gradient boosting cuts RMSE against persistence by 21% in steady running (13.6 vs 17.3 °C; MAE 10.0 vs 12.7) and 25% in disturbed operation (41.7 vs 55.4 °C; MAE 27.9 vs 38.7). Errors are reported per regime, because disturbed windows are 4.5% of the test set but carry about 35% of the error.
 
 **Task 2**
 

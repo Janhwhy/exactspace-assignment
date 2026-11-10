@@ -123,7 +123,7 @@ One evaluation label was widened after review: the G/M/H question was first labe
 | decision | chosen | alternative | why |
 |---|---|---|---|
 | Vector store | FAISS files + JSON | Chroma / Weaviate | 213 chunks need no server. Exact search, zero setup for the reviewer. A database is the documented step at scale |
-| Retrieval | hybrid + rerank | dense only | measured: dense alone misses exact terms (MRR 0.81 vs 1.00) |
+| Retrieval | hybrid + rerank | dense only | measured: dense alone misses exact terms (MRR 0.82 vs 1.00) |
 | Reranker | MiniLM-L-6 (~90 MB) | bge-reranker-base (~1.1 GB) | ~10× faster on CPU and already perfect MRR on this eval; the bigger one is the first upgrade if needed |
 | LLM | qwen2.5:3b via Ollama | flan-t5, Llama-2-7B | instruction-tuned, follows the citation format reliably, ~2 GB, Apache-2.0, runs on a laptop. flan-t5 cannot follow multi-rule prompts; 7B models are slower for little gain on extractive answers |
 | Framework | plain Python (~650 lines) | LangChain / LlamaIndex | every step is visible and testable; nothing is hidden behind abstractions in a prototype this size |

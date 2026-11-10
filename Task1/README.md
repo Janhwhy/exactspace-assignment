@@ -14,7 +14,7 @@ uv run jupyter nbconvert --to notebook --execute --inplace task1_analysis.ipynb
 # or open it: uv run jupyter lab task1_analysis.ipynb, then Restart & Run All
 ```
 
-A full run takes about 1–2 minutes. The first run parses the xlsx (~15 s) and caches it as `cache/raw.parquet`. Every CSV in this folder and every PNG in `plots/` is regenerated on each run, and all randomness is seeded.
+A full run takes about 2–3 minutes. The first run parses the xlsx (~15 s) and caches it as `cache/raw.parquet`. Every CSV in this folder and every PNG in `plots/` is regenerated on each run, and all randomness is seeded.
 
 ## What's here
 
@@ -62,12 +62,16 @@ They are numbered in notebook order: `01`–`03` EDA, `04` shutdowns, `05`–`06
 - **Six operating states:** High load, Normal load, Unstable draft, Degraded (outlet thermocouple), Trip cool-down (fan off), Heat-up / warm idle (fan off).
 - **ID-fan trips are the dominant incident.** 123 trips recovered (about one every 8.4 running days, ~110 °C dip each) and 62 more where the fan stayed off. 23 of the 39 shutdowns follow an extended fan trip within 12 h.
 - **The outlet gas thermocouple drifts for weeks and reads hotter than the inlet for most of mid-2019.** The material temperature transmitter is the least reliable tag.
-- **Forecast, RMSE in °C:**
+- **Forecast, RMSE / MAE in °C** (averaged over all 12 horizons, test Jan–Aug 2020):
 
-  | regime | persistence | ARIMA | GBM |
-  |---|---|---|---|
-  | steady running | 17.3 | 13.8 | 13.6 |
-  | disturbed | 55.4 | 52.2 | 41.7 |
+  | regime | share of origins | persistence | ARIMA | GBM |
+  |---|---|---|---|---|
+  | steady running | 77% | 17.3 / 12.7 | 13.8 / 10.2 | **13.6 / 10.0** |
+  | disturbed | 4.5% | 55.4 / 38.7 | 52.2 / 35.3 | **41.7 / 27.9** |
+  | shut down | 18% | **5.0 / 0.9** | 6.2 / 1.3 | 5.6 / 2.5 |
+  | whole test set | 100% | 19.4 / 11.8 | 16.8 / 9.8 | **15.1 / 9.5** |
+
+  When the cyclone is shut down, persistence wins because the temperature is flat. In production the forecast would be gated by regime.
 
   The 4.5% of disturbed windows carry about 35% of all forecast error.
 
