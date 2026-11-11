@@ -10,7 +10,7 @@ Ask questions about the 11 cyclone PDFs in `docs/` in plain English. Answers com
 uv sync            # Python 3.12 + pinned packages from uv.lock
 ```
 
-If you don't use uv: `python3.12 -m venv .venv && .venv/bin/pip install pymupdf sentence-transformers faiss-cpu rank-bm25 requests numpy`.
+If you don't use uv: from the repository root, `python3.12 -m venv .venv && .venv/bin/pip install -r requirements.txt`, then replace `uv run python` with `.venv/bin/python` below.
 
 **2. Local LLM (Ollama).** Install it from https://ollama.com, then:
 
@@ -34,11 +34,11 @@ To use a different Ollama model, set `OLLAMA_MODEL=llama3.2:3b` (or any other mo
 From `Task2/prototype/`:
 
 ```bash
-uv run python rag_prototype.py ingest      # build the index (~10 s after models are cached)
+uv run python rag_prototype.py ingest      # build the index (~10 s; ask/chat also do this automatically the first time)
 uv run python rag_prototype.py ask "What does a sudden draft drop indicate?"
 uv run python rag_prototype.py chat        # interactive; empty line to quit
 uv run python rag_prototype.py eval        # retrieval metrics -> evaluation.csv
-uv run python rag_prototype.py eval --llm  # + every question end to end -> evaluation_llm.csv (~2 min)
+uv run python rag_prototype.py eval --llm  # + all 37 questions end to end -> evaluation/end_to_end.csv (~2–3 min)
 ```
 
 Real output (sources list shortened):
@@ -82,10 +82,10 @@ The status line at the end tells you which path produced the answer:
 |---|---|
 | `rag_prototype.py` | the whole pipeline in one readable file (~650 lines): ingest, index, hybrid retrieval, rerank, guardrails, generation, citation checks, CLI, evaluation |
 | `docs/` | the 11 source PDFs from the provided Google Drive folder |
-| `eval_questions.csv` | 37 hand-written questions: 28 answerable (labelled with the exact source pages), 4 unanswerable, 5 sensitive |
-| `evaluation.csv` | precision@5, recall@5, hit@5, MRR and storm-SOP leakage for BM25, dense, hybrid and hybrid + rerank |
-| `evaluation_per_question.csv` | the same metrics for every question and method |
-| `evaluation_llm.csv` | end-to-end run: status, whether the answer cites a labelled page, latency and the answer text, per question |
+| `evaluation.csv` | **retrieval metrics summary**: precision@5, recall@5, hit@5, MRR and storm-SOP leakage for BM25, dense, hybrid and hybrid + rerank |
+| `evaluation/questions.csv` | the 37 hand-written evaluation questions: 28 answerable (each labelled with its exact source pages), 4 unanswerable, 5 sensitive |
+| `evaluation/retrieval_per_question.csv` | the retrieval metrics for every question and method |
+| `evaluation/end_to_end.csv` | the full pipeline on every question: status, whether the answer cites a labelled page, latency and the answer text |
 | `index/` | created by `ingest` (not committed) |
 
 Design reasoning, guardrails, monitoring and the scaling plan are in `../notes.md`.

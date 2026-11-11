@@ -1,9 +1,10 @@
 """Minimal RAG prototype over the cyclone documentation.
 
-    python rag_prototype.py ingest                 # build the index from docs/
+    python rag_prototype.py ingest                 # build the index from docs/ (also done automatically on first use)
     python rag_prototype.py ask "What does a sudden draft drop indicate?"
     python rag_prototype.py chat                   # interactive
     python rag_prototype.py eval                   # retrieval metrics -> evaluation.csv
+    python rag_prototype.py eval --llm             # + all 37 questions end to end -> evaluation/end_to_end.csv
 
 Pipeline
     PDF pages -> clean (headers/footers, personal data redacted) -> layout blocks
@@ -12,7 +13,7 @@ Pipeline
     -> guardrails -> local LLM (Ollama, qwen2.5:3b) answering only from numbered sources
     -> citation check -> answer + sources
 
-Everything is free and runs locally. See README.md for setup and notes.md for the
+Everything is free and runs locally. See README.md for setup and ../notes.md for the
 design reasoning.
 """
 
@@ -34,6 +35,7 @@ import numpy as np
 HERE = Path(__file__).resolve().parent
 DOCS_DIR = HERE / "docs"
 INDEX_DIR = HERE / "index"
+EVAL_DIR = HERE / "evaluation"   # question set and detailed results; the summary evaluation.csv stays here
 
 EMBED_MODEL = "BAAI/bge-small-en-v1.5"
 RERANK_MODEL = "cross-encoder/ms-marco-MiniLM-L-6-v2"
@@ -260,7 +262,8 @@ def _reranker():
 class Retriever:
     def __init__(self):
         if not (INDEX_DIR / "chunks.json").exists():
-            sys.exit("No index yet. Run:  python rag_prototype.py ingest")
+            print("No index yet: building it now (one time, ~10 s once the models are downloaded).\n")
+            ingest()
         import faiss
         from rank_bm25 import BM25Okapi
 
@@ -542,7 +545,7 @@ def _hit(c: Chunk, rel: set[tuple[str, int]]) -> bool:
 
 def cmd_eval(k: int = TOP_K) -> None:
     r = Retriever()
-    qs = list(csv.DictReader(open(HERE / "eval_questions.csv", encoding="utf-8")))
+    qs = list(csv.DictReader(open(EVAL_DIR / "questions.csv", encoding="utf-8")))
     methods = ["bm25", "dense", "hybrid", "hybrid_rerank"]
     per_q, rows = [], []
     for m in methods:
@@ -589,7 +592,7 @@ def cmd_eval(k: int = TOP_K) -> None:
         w.writeheader()
         for row in rows:
             w.writerow({k2: round(v, 3) if isinstance(v, float) else v for k2, v in row.items()})
-    with open(HERE / "evaluation_per_question.csv", "w", newline="") as f:
+    with open(EVAL_DIR / "retrieval_per_question.csv", "w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=list(per_q[0]))
         w.writeheader()
         w.writerows(per_q)
@@ -605,13 +608,13 @@ def cmd_eval(k: int = TOP_K) -> None:
     print(f"  correct answer/fallback decision: {gate_acc:.0%} of {len(gate)}")
     print(f"\nInput guardrail: blocked {blocked}/{len(sens)} sensitive questions, "
           f"{false_blocks} false blocks on {len(qs) - len(sens)} normal ones")
-    print("\nWrote evaluation.csv and evaluation_per_question.csv")
+    print("\nWrote evaluation.csv and evaluation/retrieval_per_question.csv")
 
 
 def cmd_eval_llm() -> None:
     """End to end: every question through guardrails, retrieval and the LLM."""
     r = Retriever()
-    qs = list(csv.DictReader(open(HERE / "eval_questions.csv", encoding="utf-8")))
+    qs = list(csv.DictReader(open(EVAL_DIR / "questions.csv", encoding="utf-8")))
     expected = {"answerable": "answered", "unanswerable": "not_found", "sensitive": "refused"}
     rows = []
     for q in qs:
@@ -624,7 +627,7 @@ def cmd_eval_llm() -> None:
                      "cites_labelled_page": (any(cited_ok) if cited_ok else ""),
                      "seconds": round(time.time() - t, 1), "answer": a.text.replace("\n", " ")})
         print(f"  {q['qid']} {q['type']:12} -> {a.status:15} {rows[-1]['seconds']:5.1f}s")
-    with open(HERE / "evaluation_llm.csv", "w", newline="", encoding="utf-8") as f:
+    with open(EVAL_DIR / "end_to_end.csv", "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=list(rows[0]))
         w.writeheader()
         w.writerows(rows)
@@ -640,7 +643,7 @@ def cmd_eval_llm() -> None:
               f"{sum(x['cites_labelled_page'] is True for x in ans)}/{len(ans)}")
     done = [x["seconds"] for x in rows if x["status"] in ("answered", "partial")]
     print(f"  median latency {np.median(done):.1f}s per answer, max {max(done):.1f}s (model {OLLAMA_MODEL})")
-    print("Wrote evaluation_llm.csv")
+    print("Wrote evaluation/end_to_end.csv")
 
 
 def main() -> None:
@@ -651,7 +654,7 @@ def main() -> None:
     a.add_argument("question")
     sub.add_parser("chat", help="interactive questions")
     e = sub.add_parser("eval", help="retrieval evaluation -> evaluation.csv")
-    e.add_argument("--llm", action="store_true", help="also run every question end to end -> evaluation_llm.csv")
+    e.add_argument("--llm", action="store_true", help="also run every question end to end -> evaluation/end_to_end.csv")
     args = ap.parse_args()
     if args.cmd == "eval":
         cmd_eval()
