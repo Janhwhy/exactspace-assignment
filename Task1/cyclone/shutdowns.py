@@ -73,7 +73,7 @@ def detect(df: pd.DataFrame, threshold: float | None = None) -> tuple[pd.DataFra
     for s, e in zip(ev["start"], ev["end"]):
         off.loc[s : e - pd.Timedelta("5min")] = True
 
-    ev["duration_h"] = (ev["end"] - ev["start"]).dt.total_seconds() / 3600
+    ev["duration_h"] = ((ev["end"] - ev["start"]).dt.total_seconds() / 3600).round(2)
     # data outages inside a stop are reported, not silently counted as running/off evidence
     ev["missing_pct"] = [
         round(100 * df.loc[s : e - pd.Timedelta("5min"), TEMP].isna().mean(), 1)
@@ -82,6 +82,78 @@ def detect(df: pd.DataFrame, threshold: float | None = None) -> tuple[pd.DataFra
     ev.insert(0, "event_id", range(1, len(ev) + 1))
     assert (ev["start"].iloc[1:].to_numpy() >= ev["end"].iloc[:-1].to_numpy()).all(), "overlapping events"
     return ev, off, threshold
+
+
+# ---------------------------------------------------------------------------
+# Fan-off periods while the line is hot.
+#
+# A shutdown is the line going cold (inlet gas below the Otsu threshold). The ID
+# fan can also stop while the gas is still hot: draft collapses to ~0 Pa within
+# one sample and the temperatures start falling. That is not "running" (no gas
+# is being pulled through the cyclone), so these periods are taken out of the
+# running data before clustering, and classified by what surrounds them:
+#   coast_down    the fan stops and a shutdown follows within 3 h: the first
+#                 part of that stop, before the gas has cooled past the threshold
+#   startup_idle  within 1 h after a restart: burner on, fan not yet started
+#   fan_trip      anything else: the fan stopped mid-run and the line recovered.
+#                 "transient" if the fan was off < 60 min, "extended" otherwise
+#                 (the inlet-temperature dip grows from ~100 C to ~270 C with
+#                 the time off, so an hour is where a trip becomes a long upset).
+# Fan trips are reported as incidents (anomalous_periods.csv), not as shutdowns:
+# the line never went cold and was back at temperature within the hour or so.
+# ---------------------------------------------------------------------------
+DRAFTS = ["Cyclone_Inlet_Draft", "Cyclone_cone_draft", "Cyclone_Outlet_Gas_draft"]
+FAN_OFF_DRAFT_PA = -60.0              # median of the three drafts above this = fan not pulling (running median ~-180 Pa)
+FAN_MERGE_GAP = pd.Timedelta("15min")  # fan-off runs this close together are one period
+FAN_MIN = pd.Timedelta("10min")        # two samples; a single 5-min blip is draft noise
+INTO_SHUTDOWN = pd.Timedelta("3h")
+AFTER_RESTART = pd.Timedelta("1h")
+EXTENDED = pd.Timedelta("60min")
+
+
+def fan_off_periods(df: pd.DataFrame, off: pd.Series) -> tuple[pd.DataFrame, pd.Series]:
+    """Return (fan-off periods while not shut down, per-timestamp fan-off mask)."""
+    raw = (df[DRAFTS].median(axis=1) > FAN_OFF_DRAFT_PA) & ~off
+    ev = _runs(raw)
+    gap = ev["start"] - ev["end"].shift()
+    group = (gap.isna() | (gap > FAN_MERGE_GAP)).cumsum()
+    ev = ev.groupby(group).agg(start=("start", "first"), end=("end", "last")).reset_index(drop=True)
+    ev = ev[ev["end"] - ev["start"] >= FAN_MIN].reset_index(drop=True)
+
+    sd_start, sd_end = _shutdown_bounds(off)
+    temp = df[TEMP]
+    rows = []
+    for s, e in zip(ev["start"], ev["end"]):
+        prev_end = sd_end[sd_end <= s]
+        nxt = sd_start[sd_start >= e]
+        since = s - prev_end[-1] if len(prev_end) else pd.Timedelta.max
+        until = nxt[0] - e if len(nxt) else pd.Timedelta.max
+        if until <= INTO_SHUTDOWN:
+            kind = "coast_down"
+        elif since <= AFTER_RESTART:
+            kind = "startup_idle"
+        else:
+            kind = "fan_trip_transient" if e - s < EXTENDED else "fan_trip_extended"
+        before = temp.loc[s - pd.Timedelta("30min"): s - pd.Timedelta("5min")].median()
+        lowest = temp.loc[s: e - pd.Timedelta("5min")].min()
+        rows.append({
+            "start": s, "end": e, "duration_min": int((e - s).total_seconds() / 60), "kind": kind,
+            "inlet_temp_before_c": round(before, 1), "inlet_temp_min_c": round(lowest, 1),
+            "dip_c": round(lowest - before, 1),
+            "minutes_since_restart": round(since.total_seconds() / 60) if len(prev_end) else np.nan,
+            "minutes_to_next_shutdown": round(until.total_seconds() / 60) if len(nxt) else np.nan,
+        })
+    fan = pd.DataFrame(rows)
+    fan.insert(0, "period_id", range(1, len(fan) + 1))
+    mask = pd.Series(False, index=df.index)
+    for s, e in zip(fan["start"], fan["end"]):
+        mask.loc[s: e - pd.Timedelta("5min")] = True
+    return fan, mask
+
+
+def _shutdown_bounds(off: pd.Series):
+    ev = _runs(off)
+    return pd.DatetimeIndex(ev["start"]), pd.DatetimeIndex(ev["end"])
 
 
 def summary(ev: pd.DataFrame, index: pd.DatetimeIndex) -> pd.DataFrame:

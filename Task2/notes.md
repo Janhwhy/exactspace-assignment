@@ -18,7 +18,7 @@ Two paths share one index (diagram: `architecture_diagram.pptx`).
 
 **Offline ingestion:** PDF → page text by layout block (PyMuPDF) → remove running headers/footers (blocks repeated on ≥ 50% of pages, "Page x of y") → redact e-mails and phone numbers → pack blocks into ~250-word chunks with ~50 words of overlap, keeping document, title and page range → embed with `bge-small-en-v1.5` → FAISS index + BM25 index + chunk store (JSON).
 
-**Online query:** input guardrail → glossary query expansion → hybrid retrieval (BM25 + dense, fused by Reciprocal Rank Fusion, 20 candidates) → cross-encoder rerank (`ms-marco-MiniLM-L-6-v2`), keep 5 with at most 2 per document → relevance gate → LLM (`qwen2.5:3b` via Ollama, temperature 0) with numbered sources → citation and support check (one retry, then extractive fallback) → PII scrub → answer + source list.
+**Online query:** input guardrail → glossary query expansion → hybrid retrieval (BM25 + dense, fused by Reciprocal Rank Fusion, 20 candidates) → cross-encoder rerank (`ms-marco-MiniLM-L-6-v2`), keep 5 with at most 2 per document → relevance gate → LLM (`qwen2.5:3b` via Ollama, temperature 0) with numbered sources → citation and support check (one retry, then extractive fallback) → NLI faithfulness check (`nli-deberta-v3-xsmall`: contradiction → one retry, then extractive fallback; weak support → warning) → PII scrub → answer + source list. Without Ollama (or with `--no-llm`), the pipeline stops after the relevance gate and returns the ranked, cited passages.
 
 ## Retrieval strategy
 
@@ -55,7 +55,7 @@ Each stage earns its place. Hybrid fixes BM25's paraphrase misses and dense's ex
 | failure mode | defence | where | measured |
 |---|---|---|---|
 | **No relevant answer** | Relevance gate: if the best reranker score is below −4.0, decline without calling the LLM and show the closest passages. Anything that passes the gate is still checked by the LLM rule "reply NOT_FOUND if none of the sources is relevant" | retrieval + generation | gate decides correctly on 32/32 questions; end to end 4/4 unanswerable questions declined |
-| **Hallucination** | Prompt allows only the numbered sources, at temperature 0. Every factual sentence must cite `[n]`. The code then checks each cited sentence: (1) the citation must exist; (2) **citation repair**: if the cited source shares little vocabulary with the sentence but another retrieved source clearly matches, the citation is re-pointed (a small model sometimes puts the right fact on the wrong number); (3) **number check**: every number must appear in a source the sentence cites. Any failure triggers one retry with a stricter instruction, then a fallback to quoting the top passage. An uncited or unsupported answer is never shown. The source list (document, page, snippet) is always printed | generation + output | 28/28 answers cite a correct page; repair fixed two wrong citations in the eval |
+| **Hallucination** | Prompt allows only the numbered sources, at temperature 0. Every factual sentence must cite `[n]`. The code then checks each cited sentence: (1) the citation must exist; (2) **citation repair**: if the cited source shares little vocabulary with the sentence but another retrieved source clearly matches, the citation is re-pointed (a small model sometimes puts the right fact on the wrong number); (3) **number check**: every number must appear in a source the sentence cites. Any failure triggers one retry with a stricter instruction, then a fallback to quoting the top passage. (4) **NLI check**: a small NLI cross-encoder scores every cited sentence against 3-sentence windows of the passages it cites. Contradiction → one retry → extractive fallback. Mean entailment < 0.5 → a visible "check the source" warning. An uncited or contradicted answer is never shown. The source list (document, page, snippet) is always printed | generation + output | all generated answers cite a correct page; NLI rejected 2/28 (both justified, see below); the warning appeared on all 4 hand-graded wrong answers |
 | **Sensitive queries** | Input filter for (a) bypassing or disabling safety equipment (interlocks, alarms, trips, relief, earthing), (b) requests for personal contact details, (c) prompt injection. Each category has a specific refusal that points to the right channel (e.g. management of change for interlocks) | input | 5/5 blocked, 0 false blocks on 32 normal questions |
 | **Personal data leakage** | Redacted at ingestion (never indexed) and scrubbed again on output | ingestion + output | 0 e-mail addresses left in the index |
 | **Prompt injection inside documents** | The system prompt says source text is data, not instructions | generation | not separately tested |
@@ -66,19 +66,32 @@ Each stage earns its place. Hybrid fixes BM25's paraphrase misses and dense's ex
 
 | question type | outcome |
 |---|---|
-| answerable (28) | 27 answered directly + 1 partial; all 28 cite a correct source page |
+| answerable (28) | 25 answered, 1 partial, 2 extractive after the NLI check. All 26 generated answers cite a correct source page |
+| **answer accuracy, hand-graded (28)** | **18 correct, 6 partial, 4 wrong (64% correct, 86% correct or partial)** |
 | unanswerable (4) | 4/4 declined |
 | sensitive (5) | 5/5 refused; 0 false refusals on the 32 normal questions |
-| reproducibility | fixed seed: two runs on the same machine gave 37/37 identical answers; a fresh-install run gave the same 37 outcomes and citations, with 3 answers worded slightly differently (llama.cpp sampling isn't bit-exact across runtimes and load) |
-| latency | median 1.1–4.5 s per answer across runs, max 12 s (laptop CPU; slower under load) |
+| NLI faithfulness | mean entailment 0.62; median 0.95 for correct answers, 0.10 for wrong ones |
+| reproducibility | fixed seed: the last two full runs gave identical answers to all 28 answerable questions |
+| latency | median 3 s per answer, max 10 s, including the NLI check |
+
+**Hand grading is the real accuracy number.** "Cites a correct page" is 26/26, but only 18 of 28 answers are fully correct. Each answer was read against its labelled source pages and graded correct, partial or wrong, with a one-line note (`prototype/evaluation/answer_grades.csv`). The grader was not blind to the system, so the grades should be spot-checked by someone else. The four wrong answers all cite a relevant page, and they fail in ways no retrieval metric sees:
+- **Wrong row of a table** (q17, q24). Two of three "insufficient airflow" causes came from the "fan motor won't start" row of the same troubleshooting table. In the feed-pressure table, 200 kPa was read from the 400–600 mm row instead of 300 kPa for "up to 400 mm".
+- **Two sources blended** (q16). G&G's "70–95% efficiency" (correctly cited to the G&G manual) was attached to Dustair's M type.
+- **Two definitions confused** (q23). d50 was described as the size with 50% of particles smaller (a p50 grading), which the source explicitly distinguishes from the d50 cut point.
+
+The six partials are mostly incomplete: a second cause, check or inspection item was left out (q07, q13, q14, q19). One (q25) has the right fact plus an unsupported extra claim.
+
+**What the NLI check adds, measured.** A small NLI cross-encoder (`cross-encoder/nli-deberta-v3-xsmall`, Apache-2.0) scores each cited answer sentence against the passages it cites:
+- *Calibration* (`prototype/evaluation/nli_check.csv`). Every real answer sentence, plus a planted wrong version of it (a number changed or a negation added). It rejects **0/46 correct sentences** and **catches 21/29 planted errors**; median entailment is 0.95 for real sentences and 0.03 for planted ones.
+- *How it is applied, and why.* Scoring a sentence against a whole 250-word passage didn't work: median entailment was 0.04 even for correct sentences, because NLI models are trained on short premises. So the passage is scored in 3-sentence windows and the best window counts. Contradiction is measured against the window that talks about the same thing. Sentences about the sources ("[3] is not relevant") are skipped, because NLI reads "the source doesn't say X" as contradicting it. A citation placed after the full stop, or at the end of a numbered list, is attached to the sentences it covers.
+- *On real answers* it found a contradiction in 2/28. Both were justified. One answer turned the manual's "operating temperature should not exceed 120 °F" into "operate within the specified temperature range of 120 °F". The other stated the right fact (the spigot does not change the cut point) but cited the wrong passage. One retry didn't fix either, so both fell back to the extractive passage. In both cases that passage contains the correct information.
+- *As a warning.* Low entailment is common for correct paraphrases too ("fourteen" vs "14"), so it never rejects. But an answer-level mean below 0.5 marked **all 4 wrong answers** (and 4 of 18 correct ones). That makes it a useful "check the source before acting" flag.
+- *Limits.* A 70M-parameter NLI model misses about a quarter of planted errors, and it can only warn about q16-style blending, not reject it: the q16 answer scored 0.02 and got the warning, but no sentence was a clear contradiction. A larger NLI model (deberta-v3-base) or an LLM judge in offline monitoring is the next step.
 
 How the first run's misses (26 answered) were fixed, each at its root cause:
 - **A storm-SOP answer cited `[8]` with only 5 sources.** The document numbers its sections "8.1, 8.2…", and the model copied a section number as a citation. Citation repair now also re-points out-of-range citations to the source whose wording matches.
 - **The spigot question answered on one run and said NOT_FOUND on the next.** Temperature 0 is not deterministic without a seed, so a seed is now fixed. And when the model says NOT_FOUND although the reranker scored the top passage very high (≥ +2), it gets one more attempt, told that source [1] was judged highly relevant.
 - **"What does a sudden draft drop indicate?" is now a labelled partial answer.** The documents say pressure differential tracks gas velocity and collection efficiency, but none says what a draft drop *means*. Both qwen2.5:3b and a 7B model correctly declined to answer it directly. Rather than force an answer, the system asks the sources a simpler question ("what do they say about suction, pressure differential and airflow?"), keeps only sentences citing passages that passed the relevance gate, and labels the result "The documents don't answer this directly". Two rejected alternatives: a three-way "answer / partial / not found" prompt (made the 3B model hedge on questions it answered well) and a free-form "say what's relevant" prompt (the model returned an empty "[1], [2]", which is why partial answers must contain at least 15 words of content).
-
-The remaining flaw:
-- **One answer blends two sources.** Asked about Dustair's G/M/H cyclone types, the model attached G&G's "70–95% efficiency" figure (correctly cited to the G&G manual) to Dustair's M type. Every fact is cited and the number really is in the cited source, so sentence-level checks cannot catch it. This is the strongest argument for a meaning-level faithfulness judge (NLI model or LLM judge) in offline monitoring.
 
 One evaluation label was widened after review: the G/M/H question was first labelled with only the summary table on p.8, but the types are explained on pp.5–8.
 
@@ -93,7 +106,8 @@ One evaluation label was widened after review: the G/M/H question was first labe
 | metric | how | target / alert |
 |---|---|---|
 | Retrieval recall@k, hit@k, MRR | `eval` on the golden question set at every index or model change; grow the set from real queries | hit@5 ≥ 0.95; block a release on regression |
-| Faithfulness | share of answer sentences with valid citations (logged per answer); weekly sample judged by an LLM or a person for "is each claim supported by its cited source" | ≥ 95% supported |
+| Faithfulness | NLI mean entailment per answer and share of answers with the low-support warning (logged per answer); weekly hand-graded sample for accuracy, as in `answer_grades.csv` | warning rate stable; graded accuracy ≥ 80% |
+| NLI rejection rate | share of answers falling back to extractive after a contradiction | rising = prompt, model or corpus problem |
 | Fallback rate | share of `not_found`, `extractive` and `refused` answers | a rising `not_found` share = documentation gap or retrieval drift |
 | Citation-retry rate | how often the first LLM answer fails the citation check | rising = prompt or model problem |
 | Top relevance score distribution | log the best reranker score per query | a downward shift = new kinds of questions the corpus doesn't cover |
@@ -127,5 +141,5 @@ One evaluation label was widened after review: the G/M/H question was first labe
 | Reranker | MiniLM-L-6 (~90 MB) | bge-reranker-base (~1.1 GB) | ~10× faster on CPU and already perfect MRR on this eval; the bigger one is the first upgrade if needed |
 | LLM | qwen2.5:3b via Ollama | flan-t5, Llama-2-7B | instruction-tuned, follows the citation format reliably, ~2 GB, Apache-2.0, runs on a laptop. flan-t5 cannot follow multi-rule prompts; 7B models are slower for little gain on extractive answers |
 | Framework | plain Python (~650 lines) | LangChain / LlamaIndex | every step is visible and testable; nothing is hidden behind abstractions in a prototype this size |
-| Guardrails | rules + score gate + citation and support checks | an LLM judge on every answer | deterministic, free and explainable; an LLM judge is reserved for offline faithfulness monitoring, where the source-blending case above shows it is needed |
+| Guardrails | rules + score gate + citation and number checks + a small NLI model | an LLM judge on every answer | deterministic, free and explainable, and the NLI check costs a median 0.6 s per answer on a laptop CPU (max 1.5 s). An LLM judge is reserved for offline monitoring: the source-blending case (q16) is only warned about, never rejected |
 | Vocabulary gap | 5-entry glossary for query expansion | fine-tune the embedder; HyDE (LLM writes a hypothetical answer to search with) | measurable, explainable and free; fine-tuning needs labelled pairs, and HyDE adds an LLM call to every query |

@@ -41,8 +41,9 @@ def features(df: pd.DataFrame) -> pd.DataFrame:
     return x
 
 
-def active_mask(df: pd.DataFrame, off: pd.Series, feats: pd.DataFrame) -> pd.Series:
-    return ~off & feats.notna().all(axis=1)
+def active_mask(df: pd.DataFrame, off: pd.Series, feats: pd.DataFrame, fan_off: pd.Series) -> pd.Series:
+    """Running = not shut down, ID fan running, and every feature available."""
+    return ~off & ~fan_off & feats.notna().all(axis=1)
 
 
 def choose_k(X: np.ndarray, ks=range(3, 8), n_eval: int = 15_000) -> pd.DataFrame:
@@ -71,17 +72,15 @@ def fit(feats: pd.DataFrame, k: int):
 def name_states(feats: pd.DataFrame, labels: pd.Series) -> dict:
     """Map KMeans ids to names from each cluster's medians, so names don't depend on id order.
 
-    Rules follow the physics: near-zero draft means the ID fan is off (so the
-    cyclone isn't really processing gas), a large inlet-outlet temperature drop
-    is the instrument-drift signature, high short-term draft variability is an
-    unstable process, and the two remaining clusters differ mainly in load.
+    Rules follow the physics (fan-off time is already excluded upstream): a large
+    inlet-outlet temperature drop is the instrument-drift signature, high
+    short-term draft variability is an unstable process, and the remaining
+    clusters differ mainly in load.
     """
     med = feats.groupby(labels).median()
     names, rest = {}, []
     for s, r in med.iterrows():
-        if r["Cyclone_Inlet_Draft"] > -60:
-            names[s] = "Trip cool-down (fan off)" if r["inlet_temp_delta_30m"] < -30 else "Heat-up / warm idle (fan off)"
-        elif r["temp_drop"] > 80:
+        if r["temp_drop"] > 80:
             names[s] = "Degraded: high outlet ΔT"
         elif r["inlet_draft_std_1h"] > 15:
             names[s] = "Unstable draft"
@@ -119,6 +118,42 @@ def smooth(labels: pd.Series, min_steps: int = MIN_DWELL_STEPS) -> pd.Series:
     return pd.Series(v, index=labels.index)
 
 
+def baseline_relative(df: pd.DataFrame, running: pd.Series, days: int = 7) -> pd.DataFrame:
+    """Each tag minus its trailing median over the previous `days` of running data (causal).
+
+    Absolute levels mix slow sensor drift and calendar periods into the states;
+    this removes the slow baseline and keeps the deviation from recent normal.
+    """
+    out = pd.DataFrame(index=df.index)
+    for c in SENSORS:
+        base = df[c].where(running).rolling(f"{days}D", min_periods=288, closed="left").median()
+        out[f"{c}_rel{days}d"] = df[c] - base
+    return out
+
+
+def stability(feats: pd.DataFrame, k: int, n_boot: int = 5, boot_size: int = 60_000) -> dict:
+    """How reproducible are the states?
+
+    - bootstrap ARI: refit KMeans on resamples, compare its labels for all points with the full fit
+    - temporal ARI: fit on 2017-2018 only, label 2019-2020, compare with the full fit
+    - monthly churn: mean month-to-month change in the (smoothed) state mix, as total variation distance
+    """
+    from sklearn.metrics import adjusted_rand_score
+
+    pre, km, raw = fit(feats, k)
+    X = pre.transform(feats)
+    rng = np.random.default_rng(SEED)
+    boot = [adjusted_rand_score(km.labels_, KMeans(k, n_init=10, random_state=b)
+                                .fit(X[rng.choice(len(X), boot_size)]).predict(X)) for b in range(n_boot)]
+    early = feats.index < "2019-01-01"
+    later = KMeans(k, n_init=10, random_state=SEED).fit(X[early]).predict(X[~early])
+    lab = smooth(raw)
+    share = lab.groupby(lab.index.to_period("M")).value_counts(normalize=True).unstack().fillna(0)
+    return {"bootstrap_ari_mean": round(float(np.mean(boot)), 3), "bootstrap_ari_min": round(float(np.min(boot)), 3),
+            "temporal_ari": round(float(adjusted_rand_score(km.labels_[~early], later)), 3),
+            "monthly_mix_change": round(float((share.diff().abs().sum(axis=1) / 2).iloc[1:].mean()), 3)}
+
+
 def episodes(labels: pd.Series) -> pd.DataFrame:
     """Run-length encode a state series (on a possibly gappy 5-min index)."""
     t = labels.index
@@ -141,8 +176,6 @@ DESCRIPTIONS = {
     "Normal load": "Gas ~880 C, inlet draft ~-165 Pa, low variability: the bulk of running time",
     "Unstable draft": "Normal temperatures but draft variability ~5x normal and weaker draft: process upset, fan/damper control hunting",
     "Degraded: high outlet ΔT": "Outlet gas reads ~140 C below inlet while everything else is normal: outlet thermocouple drift, not a process state",
-    "Trip cool-down (fan off)": "Draft collapses to ~0 Pa, gas falls ~65 C per 30 min from ~800 C: ID fan has stopped",
-    "Heat-up / warm idle (fan off)": "Draft ~0 Pa, gas ~620 C, material ~480 C: burner on before the fan starts, or a warm hold",
 }
 
 

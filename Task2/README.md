@@ -19,7 +19,9 @@ Task2/
     │   ├── evaluation.csv          retrieval metrics: BM25 vs dense vs hybrid vs hybrid + rerank
     │   ├── questions.csv           37 hand-written questions with labelled source pages
     │   ├── retrieval_per_question.csv
-    │   └── end_to_end.csv          every question through the full pipeline, with the answer text
+    │   ├── end_to_end.csv          every question through the full pipeline: answer, NLI faithfulness, hand grade
+    │   ├── answer_grades.csv       hand grades for the 28 answerable questions, with a note citing the source page
+    │   └── nli_check.csv           NLI guard calibration on real and planted-error sentences
     └── docs/                       the 11 source PDFs from the provided Google Drive folder
 ```
 
@@ -38,12 +40,16 @@ Task2/
 
 - **Retrieval** (28 labelled questions): hybrid + rerank reaches recall@5 0.97 and MRR 1.00, ahead of BM25 (0.82 / 0.72) and dense alone (0.92 / 0.82).
 - **End to end** (37 questions):
-  - all 28 answerable questions cite a correct page (27 answered directly, 1 partial);
+  - answer accuracy, hand-graded against the source pages: **18 of 28 correct, 6 partial, 4 wrong**;
+  - every generated answer cites a correct page;
+  - the NLI faithfulness check rejected 2 answers that contradicted their sources, and its warning marked all 4 wrong answers;
   - all 4 off-topic questions are declined;
   - all 5 unsafe requests are refused, with no false refusals.
+- **No LLM needed to try it:** `python rag_prototype.py ask --no-llm "..."` returns the ranked, cited passages.
 - **Models:**
   - `BAAI/bge-small-en-v1.5` embeddings (MIT);
   - `cross-encoder/ms-marco-MiniLM-L-6-v2` reranker (Apache-2.0);
+  - `cross-encoder/nli-deberta-v3-xsmall` faithfulness check (Apache-2.0);
   - `qwen2.5:3b` via Ollama (Apache-2.0).
 - **Stack:** FAISS and BM25 indexes; no paid API anywhere.
 
@@ -51,10 +57,12 @@ Task2/
 
 ```bash
 # from the repository root, once
-uv sync
-ollama pull qwen2.5:3b
+python3.12 -m venv .venv && .venv/bin/pip install -r requirements.txt    # or: uv sync
 
 cd Task2/prototype
+uv run python rag_prototype.py ask --no-llm "What should I check if suction at the dust source has become weak?"   # no Ollama needed
+
+ollama pull qwen2.5:3b                                                     # for generated answers
 uv run python rag_prototype.py ask "What should I check if suction at the dust source has become weak?"
 uv run python rag_prototype.py chat
 ```

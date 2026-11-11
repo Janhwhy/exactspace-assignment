@@ -119,11 +119,13 @@ def shutdown_year(df, events, year, threshold, path=None):
     return save(fig, path)
 
 
-STATE_COLORS = ["#2e86c1", "#c0392b", "#7f8c8d", "#f5b041", "#8e44ad", "#17a589", "#34495e"]
+STATE_COLORS = ["#2e86c1", "#f5b041", "#8e44ad", "#17a589", "#c0392b", "#34495e"]
+FAN_OFF_COLOR = "#2c3e50"
 
 
-def anomaly_context(df, labels, names, event, title, pad="6h", path=None, shutdowns=None):
-    """Temps, drafts and the state ribbon around one anomaly event."""
+def anomaly_context(df, labels, names, event, title, pad="6h", path=None, shutdowns=None, fan_off=None,
+                    span_label="anomaly"):
+    """Temps, drafts and the state ribbon (running states + fan-off time) around one anomaly event."""
     s = event["start"] - pd.Timedelta(pad)
     e = event["end"] + pd.Timedelta(pad)
     sl = df.loc[s:e]
@@ -135,7 +137,7 @@ def anomaly_context(df, labels, names, event, title, pad="6h", path=None, shutdo
     for c, col in DRAFT_COLORS.items():
         a2.plot(sl.index, sl[c], color=col, lw=1, label=SHORT[c])
     for ax in (a1, a2):
-        ax.axvspan(event["start"], event["end"], color="#f1c40f", alpha=0.35, lw=0, label="anomaly")
+        ax.axvspan(event["start"], event["end"], color="#f1c40f", alpha=0.35, lw=0, label=span_label)
         if shutdowns is not None:
             sp = [(a, b) for a, b in zip(shutdowns["start"], shutdowns["end"]) if b >= s and a <= e]
             shade(ax, sp, label="shutdown")
@@ -148,6 +150,9 @@ def anomaly_context(df, labels, names, event, title, pad="6h", path=None, shutdo
     for st, col in zip(sorted(names), STATE_COLORS):
         m = lab == st
         a3.fill_between(lab.index, 0, 1, where=m.to_numpy(), color=col, step="post", lw=0, label=names[st])
+    if fan_off is not None:
+        fo = fan_off.loc[s:e]
+        a3.fill_between(fo.index, 0, 1, where=fo.to_numpy(), color=FAN_OFF_COLOR, step="post", lw=0, label="fan off")
     a3.set_yticks([])
     a3.grid(False)
     a3.legend(ncol=6, loc="upper center", bbox_to_anchor=(0.5, -0.5), fontsize=7)

@@ -39,6 +39,7 @@ EVAL_DIR = HERE / "evaluation"   # question set, retrieval metrics and end-to-en
 
 EMBED_MODEL = "BAAI/bge-small-en-v1.5"
 RERANK_MODEL = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+NLI_MODEL = "cross-encoder/nli-deberta-v3-xsmall"   # output guard: is each answer sentence entailed by what it cites?
 OLLAMA_URL = os.environ.get("OLLAMA_HOST", "http://localhost:11434").rstrip("/")
 OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "qwen2.5:3b")
 
@@ -57,6 +58,14 @@ MIN_RELEVANCE = -4.0
 # A best score this high means the reranker is confident the top passage answers the
 # question; an LLM "NOT_FOUND" against it earns one more attempt. (Answerable median: +4.7)
 STRONG_RELEVANCE = 2.0
+# NLI output guard, calibrated by `eval --llm` (see evaluation/nli_check.csv): on correct answer sentences the
+# contradiction probability exceeds 0.5 for ~3%, on planted wrong facts for ~2/3. Low entailment is common
+# for correct paraphrases too, so it is reported for review but never used to reject.
+CONTRADICTION_T = 0.5
+LOW_ENTAILMENT_T = 0.5
+# Answer-level warning: in the hand-graded eval every wrong answer had mean entailment below this
+# (and so did 4 of 16 correct ones), so it is shown as a warning to check the source, not used to reject.
+LOW_FAITHFULNESS_T = 0.5
 
 BGE_QUERY_PREFIX = "Represent this sentence for searching relevant passages: "
 
@@ -259,6 +268,15 @@ def _reranker():
     return _cache["rr"]
 
 
+def _nli():
+    if "nli" not in _cache:
+        from sentence_transformers import CrossEncoder
+        m = CrossEncoder(NLI_MODEL)
+        labels = {v.lower(): k for k, v in m.model.config.id2label.items()}
+        _cache["nli"] = (m, labels["entailment"], labels["contradiction"])
+    return _cache["nli"]
+
+
 class Retriever:
     def __init__(self):
         if not (INDEX_DIR / "chunks.json").exists():
@@ -421,6 +439,72 @@ def check_support(answer: str, hits: list[tuple[Chunk, float]]) -> tuple[str, li
     return " ".join(out), problems
 
 
+# Sentences about the sources rather than about the plant ("[3] is not relevant", "the documents don't
+# specify ...") are not factual claims; NLI reads "the source doesn't say X" as contradicting the source.
+_META = re.compile(r"\b(not relevant|does not|do not|doesn't|don't) (provide|address|specify|mention|cover|contain|"
+                   r"say|discuss|include)|\b(not relevant|reiterates|the sources?|the documents?|the provided)\b", re.I)
+
+
+def _windows(text: str, size: int = 3) -> list[str]:
+    """Overlapping 3-sentence windows: NLI models are trained on short premises, not 250-word passages."""
+    ss = [x for x in re.split(r"(?<=[.!?;:])\s+|\n+", text) if x.strip()]
+    return [" ".join(ss[i:i + size]) for i in range(max(1, len(ss) - size + 1))] or [text]
+
+
+def nli_scores(sentence: str, chunks: list[str]) -> tuple[float, float]:
+    """(entailment, contradiction) of one answer sentence against the passages it cites.
+
+    Entailment: the best window of any cited passage (one source supporting it is enough).
+    Contradiction: in each passage, the window that talks about the same thing (most shared words);
+    a sentence counts as contradicted only if every cited passage contradicts it.
+    """
+    model, ei, ci = _nli()
+    words = set(tokenize(sentence))
+    ent, con = [], []
+    for text in chunks:
+        w = _windows(text)
+        p = model.predict([(x, sentence) for x in w], apply_softmax=True)
+        overlap = [len(words & set(tokenize(x))) for x in w]
+        ent.append(float(p[:, ei].max()))
+        con.append(float(p[int(np.argmax(overlap)), ci]))
+    return max(ent), min(con)
+
+
+def cited_sentences(answer: str, k: int) -> list[tuple[str, list[int]]]:
+    """Factual sentences of an answer with the sources they rest on.
+
+    A citation placed after the full stop ("... differential. [1][2]") belongs to the sentence before it,
+    and an uncited sentence inherits the citations of the next cited one: a citation at the end of a
+    numbered list covers the whole list. Fragments under 4 words and statements about the sources are skipped.
+    """
+    answer = re.sub(r"([.!?])\s*((?:\[\d+\]\s*)+)(?=$|\n|[A-Z])",   # "[3] is not relevant" starts a sentence
+                    lambda m: " " + m.group(2).strip() + m.group(1) + " ", answer)
+    parts = []
+    for sent in re.split(r"(?<=[.!?])\s+|\n+", answer):
+        cited = sorted({int(n) for n in re.findall(r"\[(\d+)\]", sent) if 1 <= int(n) <= k})
+        text = re.sub(r"\s*\d+\.$", "", re.sub(r"\s*\[\d+\]", "", sent).strip())   # drop a trailing list number
+        parts.append((text, cited))
+    out, carry = [], []
+    for text, cited in reversed(parts):
+        carry = cited or carry
+        if carry and len(text.split()) >= 4 and not text.endswith(":") and not _META.search(text):
+            out.append((text, carry))
+    return out[::-1]
+
+
+def nli_check(answer: str, hits: list[tuple[Chunk, float]]) -> dict:
+    """Score every cited factual sentence. faithfulness = mean entailment (None if nothing to check)."""
+    ents, low, contradicted = [], 0, []
+    for text, cited in cited_sentences(answer, len(hits)):
+        e, c = nli_scores(text, [hits[n - 1][0].text for n in cited])
+        ents.append(e)
+        low += e < LOW_ENTAILMENT_T
+        if c > CONTRADICTION_T and e < LOW_ENTAILMENT_T:
+            contradicted.append(text)
+    return {"faithfulness": round(float(np.mean(ents)), 3) if ents else None, "checked": len(ents),
+            "low_entailment": int(low), "contradicted": contradicted}
+
+
 def _verified(out: str, hits: list[tuple[Chunk, float]]) -> str | None:
     """Repair citations, then accept the answer only if every citation is valid and supported."""
     out, problems = check_support(out, hits)
@@ -429,13 +513,20 @@ def _verified(out: str, hits: list[tuple[Chunk, float]]) -> str | None:
 
 @dataclass
 class Answer:
-    status: str                 # answered | partial | not_found | refused | extractive | llm_unavailable
+    status: str                 # answered | partial | not_found | refused | extractive | llm_unavailable | retrieval_only
     text: str
     sources: list[tuple[Chunk, float]]
     reason: str = ""
+    nli: dict | None = None     # output of nli_check for generated answers
 
 
-def answer(q: str, retriever: Retriever) -> Answer:
+def _extractive(hits, note: str, reason: str, nli: dict | None = None) -> Answer:
+    """Never show an unchecked or contradicted generated answer: fall back to the evidence itself."""
+    snippet = hits[0][0].text[:600].rsplit(" ", 1)[0]
+    return Answer("extractive", note + f"Most relevant passage [1]:\n\"{snippet} ...\"", hits, reason=reason, nli=nli)
+
+
+def answer(q: str, retriever: Retriever, use_llm: bool = True) -> Answer:
     blocked = check_input(q)
     if blocked:
         return Answer("refused", blocked[1], [], reason=blocked[0])
@@ -444,7 +535,11 @@ def answer(q: str, retriever: Retriever) -> Answer:
     if not hits or hits[0][1] < MIN_RELEVANCE:
         return Answer("not_found", "I couldn't find this in the documentation. The closest passages are listed "
                       "below, but none of them answers the question.", hits[:3], reason="low_relevance")
+    if not use_llm:
+        return Answer("retrieval_only", "Retrieval only (no LLM): the most relevant passages, best first. "
+                      "Each is cited by document and page below.", hits)
 
+    import requests
     prompt = build_prompt(q, hits)
     try:
         out = ollama_chat(SYSTEM_PROMPT, prompt)
@@ -467,18 +562,32 @@ def answer(q: str, retriever: Retriever) -> Answer:
                 ok = " ".join(s for s in re.split(r"(?<=[.!?])\s+", ok)
                               if {int(n) for n in re.findall(r"\[(\d+)\]", s)} & trusted)
             if ok and len(re.sub(r"\[\d+\]", "", ok).split()) >= 15:
+                nli = nli_check(ok, hits)
+                if nli["contradicted"]:
+                    return _extractive(hits, "The generated summary contradicted its sources. ", "nli_contradiction", nli)
                 return Answer("partial", "The documents don't answer this directly. What they say about "
-                              f"{topic}:\n{redact(ok)}", hits)
+                              f"{topic}:\n{redact(ok)}", hits, nli=nli)
             return Answer("not_found", "The documents don't answer this directly. These are the most closely "
                           "related passages:", hits[:3], reason="llm_not_found")
         ok = _verified(out, hits) or _verified(ollama_chat(
             SYSTEM_PROMPT + "\nYour previous answer had missing or wrong citations. Cite the source that "
             "actually contains each fact, and copy numbers exactly from that source.", prompt), hits)
         if ok:
-            return Answer("answered", redact(ok), hits)
-        status, note = "extractive", "I couldn't produce a reliably cited answer. "
-    except Exception as e:
-        import requests
+            nli = nli_check(ok, hits)
+            reason = ""
+            if nli["contradicted"]:
+                # usually a mis-citation (the fact is in another retrieved passage): one retry, then the evidence
+                retry = _verified(ollama_chat(
+                    SYSTEM_PROMPT + "\nYour previous answer stated something its cited source does not support: "
+                    f"\"{nli['contradicted'][0]}\". Cite the source that actually states each fact, and state only "
+                    "what that source says.", prompt), hits)
+                nli2 = nli_check(retry, hits) if retry else None
+                if not retry or nli2["contradicted"]:
+                    return _extractive(hits, "The generated answer contradicted its sources. ", "nli_contradiction", nli)
+                ok, nli, reason = retry, nli2, "nli_retry"
+            return Answer("answered", redact(ok), hits, reason=reason, nli=nli)
+        return _extractive(hits, "I couldn't produce a reliably cited answer. ", "citation_check")
+    except requests.RequestException as e:   # Ollama unreachable, model missing, timeout
         status = "llm_unavailable"
         if isinstance(e, requests.HTTPError) and e.response is not None and e.response.status_code == 404:
             note = f"The model '{OLLAMA_MODEL}' isn't installed in Ollama (run `ollama pull {OLLAMA_MODEL}`). "
@@ -487,9 +596,9 @@ def answer(q: str, retriever: Retriever) -> Answer:
         else:
             note = f"The local LLM call failed ({e.__class__.__name__}). "
 
-    # Never show an uncited generated answer: fall back to the evidence itself.
-    snippet = hits[0][0].text[:600].rsplit(" ", 1)[0]
-    return Answer(status, note + f"Most relevant passage [1]:\n\"{snippet} ...\"", hits)
+    # Ollama missing or failing: the retrieved, cited passages are still returned.
+    return Answer(status, note + "The retrieved passages are listed below, with document and page "
+                  "(or run with --no-llm to skip the LLM).", hits)
 
 
 # ----------------------------------------------------------------------------- CLI
@@ -502,14 +611,21 @@ def print_answer(a: Answer) -> None:
         for n, (c, s) in enumerate(a.sources, start=1):
             snippet = re.sub(r"\s+", " ", c.text)[:160]
             print(f"  [{n}] {c.doc} {c.pages}  (relevance {s:+.2f})\n      \"{snippet}...\"")
+    if a.nli and a.nli["faithfulness"] is not None and a.nli["faithfulness"] < LOW_FAITHFULNESS_T \
+            and a.status in ("answered", "partial"):
+        print("\nWARNING: the cited passages only weakly support this answer. Check the source before acting on it.")
+    if a.nli and a.nli["checked"]:
+        print(f"\nFaithfulness check (NLI): mean entailment {a.nli['faithfulness']:.2f} over {a.nli['checked']} "
+              f"sentence(s); {a.nli['low_entailment']} not confirmed by the NLI model (often paraphrase), "
+              f"{len(a.nli['contradicted'])} contradicted")
     print(f"\n({a.status}{': ' + a.reason if a.reason else ''})")
 
 
-def cmd_ask(q: str) -> None:
-    print_answer(answer(q, Retriever()))
+def cmd_ask(q: str, use_llm: bool = True) -> None:
+    print_answer(answer(q, Retriever(), use_llm))
 
 
-def cmd_chat() -> None:
+def cmd_chat(use_llm: bool = True) -> None:
     r = Retriever()
     print("Ask about the cyclone documentation (empty line to quit).")
     while True:
@@ -519,7 +635,7 @@ def cmd_chat() -> None:
             break
         if not q:
             break
-        print_answer(answer(q, r))
+        print_answer(answer(q, r, use_llm))
 
 
 # ----------------------------------------------------------------------------- evaluation
@@ -611,10 +727,40 @@ def cmd_eval(k: int = TOP_K) -> None:
     print("\nWrote evaluation/evaluation.csv and evaluation/retrieval_per_question.csv")
 
 
+def _answer_key(text: str) -> str:
+    """Short fingerprint of an answer, so a hand grade is only reused for the exact answer it was given to."""
+    import hashlib
+    return hashlib.sha1(text.encode("utf-8")).hexdigest()[:10]
+
+
+def _nli_calibration(rows: list[dict], r: Retriever, qs: dict) -> list[dict]:
+    """Score real answer sentences and planted wrong versions of them (a number changed, or a negation
+    added) with the NLI guard. Shows how often it rejects correct text and how often it catches errors."""
+    out = []
+    for row in rows:
+        if row["status"] != "answered":
+            continue
+        hits = r.search(qs[row["qid"]]["question"])
+        for text, cited in cited_sentences(row["answer"], len(hits)):
+            nums = re.findall(r"\b\d+\b", text)
+            planted = (text.replace(nums[0], str(int(nums[0]) * 3 + 7), 1) if nums
+                       else re.sub(r"\b(should|must|is|are|can)\b", r"\1 not", text, count=1))
+            chunks = [hits[n - 1][0].text for n in cited]
+            for kind, t in (("real", text), ("planted_error", planted)):
+                if kind == "planted_error" and t == text:
+                    continue
+                e, c = nli_scores(t, chunks)
+                out.append({"qid": row["qid"], "kind": kind, "entailment": round(e, 3), "contradiction": round(c, 3),
+                            "rejected": c > CONTRADICTION_T and e < LOW_ENTAILMENT_T, "sentence": t})
+    return out
+
+
 def cmd_eval_llm() -> None:
     """End to end: every question through guardrails, retrieval and the LLM."""
     r = Retriever()
     qs = list(csv.DictReader(open(EVAL_DIR / "questions.csv", encoding="utf-8")))
+    grades_file = EVAL_DIR / "answer_grades.csv"   # hand grades: qid, grade, answer_key, note
+    grades = {g["qid"]: g for g in csv.DictReader(open(grades_file, encoding="utf-8"))} if grades_file.exists() else {}
     expected = {"answerable": "answered", "unanswerable": "not_found", "sensitive": "refused"}
     rows = []
     for q in qs:
@@ -622,10 +768,22 @@ def cmd_eval_llm() -> None:
         a = answer(q["question"], r)
         cited = sorted({int(n) for n in re.findall(r"\[(\d+)\]", a.text)}) if a.status in ("answered", "partial") else []
         cited_ok = [_hit(a.sources[n - 1][0], _relevant_pages(q["relevant"])) for n in cited] if q["relevant"] else []
+        text = a.text.replace("\n", " ")
+        g = grades.get(q["qid"])
         rows.append({"qid": q["qid"], "type": q["type"], "status": a.status, "reason": a.reason,
                      "as_expected": a.status == expected[q["type"]],
                      "cites_labelled_page": (any(cited_ok) if cited_ok else ""),
-                     "seconds": round(time.time() - t, 1), "answer": a.text.replace("\n", " ")})
+                     "faithfulness": a.nli["faithfulness"] if a.nli and a.nli["faithfulness"] is not None else "",
+                     "nli_sentences": a.nli["checked"] if a.nli else "",
+                     "nli_not_confirmed": a.nli["low_entailment"] if a.nli else "",
+                     "low_support_warning": bool(a.nli and a.nli["faithfulness"] is not None and a.status in ("answered", "partial")
+                                                 and a.nli["faithfulness"] < LOW_FAITHFULNESS_T),
+                     "nli_rejected": a.reason == "nli_contradiction",
+                     "nli_retried": a.reason in ("nli_retry", "nli_contradiction"),
+                     # a grade only counts for the exact answer it was given to; a changed answer needs regrading
+                     "hand_grade": (g["grade"] if g and g["answer_key"] == _answer_key(text) else ("regrade" if g else "")),
+                     "answer_key": _answer_key(text),
+                     "seconds": round(time.time() - t, 1), "answer": text})
         print(f"  {q['qid']} {q['type']:12} -> {a.status:15} {rows[-1]['seconds']:5.1f}s")
     with open(EVAL_DIR / "end_to_end.csv", "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=list(rows[0]))
@@ -643,7 +801,36 @@ def cmd_eval_llm() -> None:
               f"{sum(x['cites_labelled_page'] is True for x in ans)}/{len(ans)}")
     done = [x["seconds"] for x in rows if x["status"] in ("answered", "partial")]
     print(f"  median latency {np.median(done):.1f}s per answer, max {max(done):.1f}s (model {OLLAMA_MODEL})")
+    faith = [x["faithfulness"] for x in rows if x["faithfulness"] != ""]
+    reached = [x for x in rows if x["nli_sentences"] != ""]
+    if faith:
+        print(f"  NLI faithfulness: mean entailment {np.mean(faith):.2f} over {len(faith)} generated answers; "
+              f"contradiction found in {sum(x['nli_retried'] for x in reached)}/{len(reached)}, fixed by one retry in "
+              f"{sum(x['reason'] == 'nli_retry' for x in reached)}, rejected (extractive fallback) "
+              f"{sum(x['nli_rejected'] for x in reached)}/{len(reached)}")
+    graded = [x for x in rows if x["hand_grade"] in ("correct", "partial", "wrong")]
+    if graded:
+        c = Counter(x["hand_grade"] for x in graded)
+        print(f"  hand-graded answers: {len(graded)} -> {c['correct']} correct, {c['partial']} partial, {c['wrong']} wrong"
+              f" (accuracy {c['correct'] / len(graded):.0%}, correct or partial {(c['correct'] + c['partial']) / len(graded):.0%})")
+        warned = Counter(x["hand_grade"] for x in graded if x["low_support_warning"])
+        print(f"  low-support warning shown on {warned['wrong']}/{c['wrong']} wrong, {warned['partial']}/{c['partial']} partial, "
+              f"{warned['correct']}/{c['correct']} correct answers")
+    if any(x["hand_grade"] == "regrade" for x in rows):
+        print("  some answers changed since they were graded: hand_grade = 'regrade' in end_to_end.csv")
     print("Wrote evaluation/end_to_end.csv")
+
+    cal = _nli_calibration(rows, r, {q["qid"]: q for q in qs})
+    with open(EVAL_DIR / "nli_check.csv", "w", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=list(cal[0]))
+        w.writeheader()
+        w.writerows(cal)
+    real = [x for x in cal if x["kind"] == "real"]
+    fake = [x for x in cal if x["kind"] == "planted_error"]
+    print(f"\nNLI guard calibration: rejects {sum(x['rejected'] for x in real)}/{len(real)} correct answer sentences, "
+          f"catches {sum(x['rejected'] for x in fake)}/{len(fake)} planted errors "
+          f"(median entailment {np.median([x['entailment'] for x in real]):.2f} vs "
+          f"{np.median([x['entailment'] for x in fake]):.2f}) -> evaluation/nli_check.csv")
 
 
 def main() -> None:
@@ -652,7 +839,9 @@ def main() -> None:
     sub.add_parser("ingest", help="build the index from docs/")
     a = sub.add_parser("ask", help="answer one question")
     a.add_argument("question")
-    sub.add_parser("chat", help="interactive questions")
+    a.add_argument("--no-llm", action="store_true", help="retrieval only: return the cited passages, no Ollama needed")
+    c = sub.add_parser("chat", help="interactive questions")
+    c.add_argument("--no-llm", action="store_true", help="retrieval only: return the cited passages, no Ollama needed")
     e = sub.add_parser("eval", help="retrieval evaluation -> evaluation/evaluation.csv")
     e.add_argument("--llm", action="store_true", help="also run every question end to end -> evaluation/end_to_end.csv")
     args = ap.parse_args()
@@ -661,7 +850,12 @@ def main() -> None:
         if args.llm:
             cmd_eval_llm()
         return
-    {"ingest": ingest, "chat": cmd_chat}.get(args.cmd, lambda: cmd_ask(args.question))()
+    if args.cmd == "ingest":
+        ingest()
+    elif args.cmd == "chat":
+        cmd_chat(not args.no_llm)
+    else:
+        cmd_ask(args.question, not args.no_llm)
 
 
 if __name__ == "__main__":

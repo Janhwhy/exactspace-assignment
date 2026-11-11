@@ -10,15 +10,15 @@ Two detectors feed one event table:
    every state to have the same anomaly rate and throw away the comparison
    "which state is anomaly-prone?".
 
-2. Upset-state rule (detector = "transient_fan_trip" / "fan_trip_extended").
-   Purely contextual detection has a blind spot: an upset that happens often
-   enough becomes its own cluster, and is then "normal for its state". Here
-   that is the fan-off cool-down state -- the ID fan trips, draft collapses,
-   temperatures fall. Every such episode that is not simply the first step of
-   a detected shutdown is reported: "transient" when the next episode has the
-   fan running again, "extended" when the fan stayed off (the line coasted
-   down slowly, so the shutdown threshold is crossed only hours later or not
-   at all before a restart).
+2. Fan-trip rule (detector = "transient_fan_trip" / "fan_trip_extended").
+   The ID fan stopping while the line is hot (draft collapses to ~0 Pa) is
+   detected by the fan-off layer in shutdowns.py and excluded from the
+   running data the states and the Isolation Forests are fitted on. Every
+   fan-off period that is not part of a stop or a start-up is reported here
+   as an incident: "transient" when the fan was back within 60 min,
+   "extended" when it stayed off longer. Without this rule the detector would
+   have a blind spot: an upset that happens often enough becomes its own
+   cluster and is then "normal for its state".
 
 Attribution for both: robust z-scores (median / MAD) per tag, per state. The
 detector says "this is unusual"; the z-scores say which tags made it unusual
@@ -31,15 +31,12 @@ from sklearn.ensemble import IsolationForest
 from sklearn.preprocessing import RobustScaler
 
 from .data import SHORT
-from .states import episodes
 
 ATTRIB_COLS = list(SHORT) + ["temp_drop", "draft_dp"]
 FLAG_PCT = 99.5          # pooled percentile of IF score
 GAP_STEPS = 3            # flagged points within 15 min belong to the same event
 MIN_POINTS = 2           # single-sample blips are dropped unless extreme
 EXTREME_PCT = 99.95
-TRIP_STATE = "Trip cool-down (fan off)"
-LEADS_TO_SHUTDOWN = pd.Timedelta("3h")
 SEED = 7
 
 
@@ -101,42 +98,38 @@ def isolation_forest_events(sc, shutdowns, names) -> tuple[pd.DataFrame, float]:
     return pd.DataFrame(rows), thr
 
 
-def transient_trip_events(sc, feats, labels, shutdowns, names) -> pd.DataFrame:
-    """Fan-off episodes during running that did not lead into a shutdown.
+def fan_trip_events(feats_all: pd.DataFrame, labels: pd.Series, fan: pd.DataFrame,
+                    sc: pd.DataFrame, shutdowns: pd.DataFrame, names: dict) -> pd.DataFrame:
+    """One row per fan trip (from shutdowns.fan_off_periods).
 
     Attribution measures the trip samples against the distribution of the state
-    the line was in just before the trip, so the implicated tags describe what
-    changed relative to normal running.
+    the line was in just before the fan stopped, so the implicated tags describe
+    what changed relative to normal running.
     """
-    trip_id = {v: k for k, v in names.items()}[TRIP_STATE]
-    fan_off = {k for k, v in names.items() if "fan off" in v}
     stats = sc.attrs["state_stats"]
-    ep = episodes(labels).reset_index(drop=True)
     s0, e0 = shutdowns["start"].to_numpy(), shutdowns["end"].to_numpy()
-    zcols = [f"z_{c}" for c in ATTRIB_COLS]
+    temp = feats_all["Cyclone_Inlet_Gas_Temp"]
     rows = []
-    for j, r in ep.iterrows():
-        if r.state != trip_id:
-            continue
-        nxt = s0[s0 >= r.end.to_datetime64()]
-        if len(nxt) and pd.Timestamp(nxt[0]) - r.end <= LEADS_TO_SHUTDOWN:
-            continue  # this cool-down is the start of a real stop, already in shutdown_periods
-        # recovered = the very next episode (no gap in between) has the fan running again
-        after = ep.iloc[j + 1] if j + 1 < len(ep) else None
-        recovered = after is not None and not np.isnan(after.prev_state) and after.state not in fan_off
-        g = sc.iloc[r.i0 : r.i1]
-        ref_state = trip_id if np.isnan(r.prev_state) else int(r.prev_state)
-        med, mad = stats[ref_state]
-        zref = g.copy()
-        zref[zcols] = ((feats.iloc[r.i0 : r.i1][ATTRIB_COLS] - med) / mad).to_numpy()
-        detector = "transient_fan_trip" if recovered else "fan_trip_extended"
-        rows.append(_event_row(g, detector, trip_id, names, s0, e0, zref=zref))
+    for r in fan[fan["kind"].str.startswith("fan_trip")].itertuples():
+        before = labels.loc[:r.start - pd.Timedelta("5min")]
+        ref = int(before.iloc[-1]) if len(before) else int(labels.iloc[0])
+        med, mad = stats[ref]
+        window = feats_all.loc[r.start: r.end - pd.Timedelta("5min")]
+        g = pd.DataFrame(((window[ATTRIB_COLS] - med) / mad).to_numpy(),
+                         index=window.index, columns=[f"z_{c}" for c in ATTRIB_COLS])
+        # no IF score exists for fan-off samples; "peak" is the lowest inlet temperature
+        g["score"] = -temp.loc[window.index].fillna(temp.loc[window.index].max())
+        row = _event_row(g, "transient_fan_trip" if r.kind == "fan_trip_transient" else "fan_trip_extended",
+                         ref, names, s0, e0)
+        row["state"] = f"fan off (was {names[ref]})"
+        row["peak_score"] = np.nan
+        rows.append(row)
     return pd.DataFrame(rows)
 
 
-def build_events(sc, feats, labels, shutdowns, names) -> pd.DataFrame:
+def build_events(sc, feats_all, labels, fan, shutdowns, names) -> pd.DataFrame:
     iso, thr = isolation_forest_events(sc, shutdowns, names)
-    trips = transient_trip_events(sc, feats, labels, shutdowns, names)
+    trips = fan_trip_events(feats_all, labels, fan, sc, shutdowns, names)
     ev = pd.concat([iso, trips]).sort_values("start").reset_index(drop=True)
     # an IF event that overlaps a trip describes the same incident: keep the trip row, note it
     if len(trips):
@@ -150,7 +143,7 @@ def build_events(sc, feats, labels, shutdowns, names) -> pd.DataFrame:
 
 
 def rate_by_state(sc: pd.DataFrame, ev: pd.DataFrame, names: dict) -> pd.DataFrame:
-    """Contextual-IF anomaly density per state (trips excluded: they *are* a state)."""
+    """Contextual-IF anomaly density per running state (fan trips are counted separately)."""
     thr = ev.attrs["threshold"]
     iso = ev[ev["detector"] == "isolation_forest"]
     g = sc.groupby("state")
