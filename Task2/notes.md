@@ -71,7 +71,7 @@ Each stage earns its place. Hybrid fixes BM25's paraphrase misses and dense's ex
 | unanswerable (4) | 4/4 declined |
 | sensitive (5) | 5/5 refused; 0 false refusals on the 32 normal questions |
 | NLI faithfulness | mean entailment 0.62; median 0.95 for correct answers, 0.10 for wrong ones |
-| reproducibility | fixed seed: the last two full runs gave identical answers to all 28 answerable questions |
+| reproducibility | fixed seed: two full runs on this machine gave identical answers to all 28 answerable questions; a fresh-install run reworded 3, and all three keep their grade |
 | latency | median 3 s per answer, max 10 s, including the NLI check |
 
 **Hand grading is the real accuracy number.** "Cites a correct page" is 26/26, but only 18 of 28 answers are fully correct. Each answer was read against its labelled source pages and graded correct, partial or wrong, with a one-line note (`prototype/evaluation/answer_grades.csv`). The grader was not blind to the system, so the grades should be spot-checked by someone else. The four wrong answers all cite a relevant page, and they fail in ways no retrieval metric sees:

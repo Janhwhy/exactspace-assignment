@@ -18,6 +18,8 @@ cd Task1
 # or open it: ../.venv/bin/jupyter lab task1_analysis.ipynb, then Restart & Run All
 ```
 
+No `python3.12` on the machine? Run `uv venv --python 3.12 --seed .venv` instead (uv downloads Python 3.12), then the same `pip install` line. The pins need Python 3.12.
+
 To use another copy of the data, set `CYCLONE_DATA=/path/to/data.xlsx`. If the file is missing, the notebook stops with one message naming the path it expected.
 
 A full run takes about 2–3 minutes. The first run parses the xlsx (~15 s) and caches it as `cache/raw.parquet`. Every CSV and every PNG is regenerated on each run, and all randomness is seeded. The notebook is saved with all outputs, so it can be read without running anything.

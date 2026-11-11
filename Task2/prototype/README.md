@@ -17,7 +17,7 @@ Ask questions about the 11 cyclone PDFs in `docs/` in plain English. Answers com
 uv sync            # Python 3.12 + pinned packages from uv.lock
 ```
 
-If you don't use uv: from the repository root, `python3.12 -m venv .venv && .venv/bin/pip install -r requirements.txt`, then replace `uv run python` with `.venv/bin/python` below.
+If you don't use uv: from the repository root, `python3.12 -m venv .venv && .venv/bin/pip install -r requirements.txt`, then replace `uv run python` with `.venv/bin/python` below. (No `python3.12`? Use `uv venv --python 3.12 --seed .venv`.)
 
 **2. Local LLM (Ollama), for generated answers only.** Install it from https://ollama.com, then:
 
@@ -128,7 +128,7 @@ Precision@5 is capped by the labels: most questions have one relevant page, so a
 | sensitive (5) | 5/5 refused, 0 false refusals on the 32 normal questions |
 | NLI faithfulness | mean entailment 0.62 over the 28 generated answers (0.95 median for correct answers, 0.10 for wrong ones). The low-support warning (< 0.5) appeared on **all 4 wrong answers**, and on 4 of the 18 correct ones |
 | NLI contradiction guard | on real answers it rejected 2/28: one turned a "120 °F maximum" into a "temperature range", and one cited the wrong passage. In calibration it rejects 0/46 correct answer sentences and catches 21/29 planted errors (`evaluation/nli_check.csv`) |
-| reproducibility | fixed LLM seed: the last two full runs gave identical answers to all 28 answerable questions (checked by answer fingerprint) |
+| reproducibility | fixed LLM seed: two full runs on this machine gave identical answers to all 28 answerable questions (checked by answer fingerprint). A run from a fresh unzip and new environment reworded 3 of 28 answers, and all three keep their grade (one, q22, was answered after the NLI retry instead of falling back) |
 | latency | median 3 s per answer, max 10 s, including the NLI check (Apple M-series laptop, CPU) |
 
 **The weak case, shown openly.** The brief's own example, *"What does a sudden draft drop indicate?"*, comes back as `partial`:

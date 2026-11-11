@@ -64,6 +64,8 @@ All the Python code runs in one Python 3.12 environment. From the repository roo
 python3.12 -m venv .venv && .venv/bin/pip install -r requirements.txt    # or, with uv: uv sync
 ```
 
+No `python3.12` on the machine? Run `uv venv --python 3.12 --seed .venv` instead (uv downloads Python 3.12), then the same `pip install` line. The pins need Python 3.12.
+
 **Task 1** runs as delivered: the raw data is included at `Task1/data/data.xlsx`.
 
 ```bash
