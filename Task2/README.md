@@ -9,13 +9,14 @@ Task2/
 ├── README.md                       this file
 ├── notes.md                        design write-up: retrieval strategy, guardrails, monitoring, scaling, trade-offs
 ├── architecture_diagram.pptx       architecture slide + production / scaling slide (editable shapes)
-├── architecture_diagram.png        the architecture as an image (exported from the .drawio file)
-├── architecture_diagram.drawio     editable source of the PNG (open in draw.io or app.diagrams.net)
+├── architecture/
+│   ├── architecture_diagram.png    the architecture as an image (exported from the .drawio file)
+│   └── architecture_diagram.drawio editable source of the PNG (open in draw.io or app.diagrams.net)
 └── prototype/
     ├── README.md                   exact setup and run steps, models to download, results
     ├── rag_prototype.py            the whole pipeline in one file: ingest, retrieve, rerank, guardrails, generate, evaluate
-    ├── evaluation.csv              retrieval metrics: BM25 vs dense vs hybrid vs hybrid + rerank
     ├── evaluation/
+    │   ├── evaluation.csv          retrieval metrics: BM25 vs dense vs hybrid vs hybrid + rerank
     │   ├── questions.csv           37 hand-written questions with labelled source pages
     │   ├── retrieval_per_question.csv
     │   └── end_to_end.csv          every question through the full pipeline, with the answer text
@@ -26,12 +27,12 @@ Task2/
 
 | brief section | where |
 |---|---|
-| 1. System architecture and diagram | `architecture_diagram.pptx` / `.png`; `notes.md` → *Architecture* |
+| 1. System architecture and diagram | `architecture_diagram.pptx`, `architecture/architecture_diagram.png`; `notes.md` → *Architecture* |
 | 2. Retrieval strategy: chunking, embeddings, retrieval method, relevance and faithfulness | `notes.md` → *Retrieval strategy*, *Faithfulness and guardrails* |
 | 3. Guardrails: no answer, hallucination, sensitive queries; monitoring metrics | `notes.md` → *Faithfulness and guardrails*, *Monitoring* |
 | 4. Scalability: 10× documents, 100+ users, cloud cost | `notes.md` → *Scalability* |
 | 5. Runnable prototype with free and open-source tools | `prototype/` (start with `prototype/README.md`) |
-| Bonus: evaluation | `prototype/evaluation.csv` and `prototype/evaluation/` |
+| Bonus: evaluation | `prototype/evaluation/evaluation.csv` and the other files in `prototype/evaluation/` |
 
 ## Results at a glance
 

@@ -24,24 +24,19 @@ Janhavi_Bhattad_DataScience/
 ├── Task1/                         machine data analysis
 │   ├── README.md                  run steps, method table, plot index, results, limitations
 │   ├── task1_analysis.ipynb       the analysis, executed
-│   ├── shutdown_periods.csv       ┐
-│   ├── anomalous_periods.csv      │ required outputs
-│   ├── clusters_summary.csv       │
-│   ├── forecasts.csv              ┘
-│   ├── supporting_outputs/        data quality, state episodes, forecast metrics
-│   ├── plots/                     19 PNGs, numbered in notebook order
-│   └── cyclone/                   the code the notebook calls, one module per step
+│   ├── cyclone/                   the code the notebook calls, one module per step
+│   ├── outputs/                   the 4 required CSVs (+ supporting/ with 3 more)
+│   └── plots/                     19 PNGs in 5 subfolders, one per section of the brief
 │
 └── Task2/                         RAG system design + prototype
     ├── README.md                  map of Task 2 and where each brief section is answered
     ├── notes.md                   retrieval strategy, guardrails, monitoring, scaling, trade-offs
     ├── architecture_diagram.pptx  architecture + production / scaling slides
-    ├── architecture_diagram.png   architecture image (source: architecture_diagram.drawio)
+    ├── architecture/              the same diagram as a PNG + its editable draw.io source
     └── prototype/
         ├── README.md              exact setup and run steps, models, results
         ├── rag_prototype.py       the runnable prototype
-        ├── evaluation.csv         retrieval metrics
-        ├── evaluation/            question set and per-question / end-to-end results
+        ├── evaluation/            evaluation.csv (retrieval metrics), question set, end-to-end results
         └── docs/                  the 11 source PDFs
 ```
 
@@ -50,12 +45,12 @@ Janhavi_Bhattad_DataScience/
 | the brief asks for | delivered in |
 |---|---|
 | Task 1 code, runnable end to end | `Task1/task1_analysis.ipynb` (+ `Task1/cyclone/`); a fresh install reproduces every CSV byte for byte |
-| `shutdown_periods.csv`, `anomalous_periods.csv`, `clusters_summary.csv`, `forecasts.csv` | `Task1/` |
-| Plots as PNG in `plots/` | `Task1/plots/` (indexed in `Task1/README.md`) |
+| `shutdown_periods.csv`, `anomalous_periods.csv`, `clusters_summary.csv`, `forecasts.csv` | `Task1/outputs/` |
+| Plots as PNG in `plots/` | `Task1/plots/`, grouped by section (indexed in `Task1/README.md`) |
 | Task 1 README | `Task1/README.md` |
-| `architecture_diagram.pptx` | `Task2/` (plus a PNG and the editable draw.io source) |
+| `architecture_diagram.pptx` | `Task2/` (plus a PNG and the editable draw.io source in `Task2/architecture/`) |
 | `notes.md`: trade-offs, retrieval strategy, guardrails, scaling plan | `Task2/notes.md` |
-| `prototype/`: `rag_prototype.py`, `README.md`, `docs/`, optional `evaluation.csv` | `Task2/prototype/` |
+| `prototype/`: `rag_prototype.py`, `README.md`, `docs/`, optional `evaluation.csv` | `Task2/prototype/` (evaluation in `Task2/prototype/evaluation/`) |
 | Free / open-source models and tools only | bge-small (MIT), MiniLM cross-encoder and qwen2.5:3b (Apache-2.0), FAISS, BM25, Ollama |
 | `Final_Presentation.pptx`, 6–9 slides covering both tasks | root, 9 slides |
 

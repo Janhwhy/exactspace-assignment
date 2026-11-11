@@ -3,7 +3,7 @@
     python rag_prototype.py ingest                 # build the index from docs/ (also done automatically on first use)
     python rag_prototype.py ask "What does a sudden draft drop indicate?"
     python rag_prototype.py chat                   # interactive
-    python rag_prototype.py eval                   # retrieval metrics -> evaluation.csv
+    python rag_prototype.py eval                   # retrieval metrics -> evaluation/evaluation.csv
     python rag_prototype.py eval --llm             # + all 37 questions end to end -> evaluation/end_to_end.csv
 
 Pipeline
@@ -35,7 +35,7 @@ import numpy as np
 HERE = Path(__file__).resolve().parent
 DOCS_DIR = HERE / "docs"
 INDEX_DIR = HERE / "index"
-EVAL_DIR = HERE / "evaluation"   # question set and detailed results; the summary evaluation.csv stays here
+EVAL_DIR = HERE / "evaluation"   # question set, retrieval metrics and end-to-end results
 
 EMBED_MODEL = "BAAI/bge-small-en-v1.5"
 RERANK_MODEL = "cross-encoder/ms-marco-MiniLM-L-6-v2"
@@ -587,7 +587,7 @@ def cmd_eval(k: int = TOP_K) -> None:
     blocked = sum(check_input(q["question"]) is not None for q in sens)
     false_blocks = sum(check_input(q["question"]) is not None for q in qs if q["type"] != "sensitive")
 
-    with open(HERE / "evaluation.csv", "w", newline="") as f:
+    with open(EVAL_DIR / "evaluation.csv", "w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=list(rows[0]))
         w.writeheader()
         for row in rows:
@@ -608,7 +608,7 @@ def cmd_eval(k: int = TOP_K) -> None:
     print(f"  correct answer/fallback decision: {gate_acc:.0%} of {len(gate)}")
     print(f"\nInput guardrail: blocked {blocked}/{len(sens)} sensitive questions, "
           f"{false_blocks} false blocks on {len(qs) - len(sens)} normal ones")
-    print("\nWrote evaluation.csv and evaluation/retrieval_per_question.csv")
+    print("\nWrote evaluation/evaluation.csv and evaluation/retrieval_per_question.csv")
 
 
 def cmd_eval_llm() -> None:
@@ -653,7 +653,7 @@ def main() -> None:
     a = sub.add_parser("ask", help="answer one question")
     a.add_argument("question")
     sub.add_parser("chat", help="interactive questions")
-    e = sub.add_parser("eval", help="retrieval evaluation -> evaluation.csv")
+    e = sub.add_parser("eval", help="retrieval evaluation -> evaluation/evaluation.csv")
     e.add_argument("--llm", action="store_true", help="also run every question end to end -> evaluation/end_to_end.csv")
     args = ap.parse_args()
     if args.cmd == "eval":

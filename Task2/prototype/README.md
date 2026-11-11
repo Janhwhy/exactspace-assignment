@@ -37,7 +37,7 @@ From `Task2/prototype/`:
 uv run python rag_prototype.py ingest      # build the index (~10 s; ask/chat also do this automatically the first time)
 uv run python rag_prototype.py ask "What does a sudden draft drop indicate?"
 uv run python rag_prototype.py chat        # interactive; empty line to quit
-uv run python rag_prototype.py eval        # retrieval metrics -> evaluation.csv
+uv run python rag_prototype.py eval        # retrieval metrics -> evaluation/evaluation.csv
 uv run python rag_prototype.py eval --llm  # + all 37 questions end to end -> evaluation/end_to_end.csv (~2–3 min)
 ```
 
@@ -82,7 +82,7 @@ The status line at the end tells you which path produced the answer:
 |---|---|
 | `rag_prototype.py` | the whole pipeline in one readable file (~650 lines): ingest, index, hybrid retrieval, rerank, guardrails, generation, citation checks, CLI, evaluation |
 | `docs/` | the 11 source PDFs from the provided Google Drive folder |
-| `evaluation.csv` | **retrieval metrics summary**: precision@5, recall@5, hit@5, MRR and storm-SOP leakage for BM25, dense, hybrid and hybrid + rerank |
+| `evaluation/evaluation.csv` | **retrieval metrics summary**: precision@5, recall@5, hit@5, MRR and storm-SOP leakage for BM25, dense, hybrid and hybrid + rerank |
 | `evaluation/questions.csv` | the 37 hand-written evaluation questions: 28 answerable (each labelled with its exact source pages), 4 unanswerable, 5 sensitive |
 | `evaluation/retrieval_per_question.csv` | the retrieval metrics for every question and method |
 | `evaluation/end_to_end.csv` | the full pipeline on every question: status, whether the answer cites a labelled page, latency and the answer text |

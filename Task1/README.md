@@ -17,24 +17,30 @@ uv run jupyter nbconvert --to notebook --execute --inplace task1_analysis.ipynb
 - **Data somewhere else?** Set `CYCLONE_DATA=/path/to/data.xlsx` instead of copying it.
 - **Not using uv?** Run `pip install -r requirements.txt` (from the root) into a Python 3.12 environment.
 
-A full run takes about 2–3 minutes. The first run parses the xlsx (~15 s) and caches it as `cache/raw.parquet`. Every CSV and every PNG is regenerated on each run, and all randomness is seeded: a fresh install reproduces the submitted CSVs byte for byte. The notebook is saved with all outputs, so it can be read without running anything.
+A full run takes about 2–3 minutes. The first run parses the xlsx (~15 s) and caches it as `cache/raw.parquet`. Every CSV in `outputs/` and every PNG in `plots/` is regenerated on each run, and all randomness is seeded: a fresh install reproduces the submitted CSVs byte for byte. The notebook is saved with all outputs, so it can be read without running anything.
 
 ## What's here
 
 ```
 Task1/
-├── task1_analysis.ipynb      the analysis, executed, with the reasoning behind every decision
-├── README.md                 this file
-├── shutdown_periods.csv      ┐
-├── anomalous_periods.csv     │ the four required outputs
-├── clusters_summary.csv      │
-├── forecasts.csv             ┘
-├── supporting_outputs/       extra detail behind the required outputs
-│   ├── data_quality.csv
-│   ├── state_episodes.csv
-│   └── forecast_metrics.csv
-├── plots/                    19 figures, numbered in notebook order (index below)
-└── cyclone/                  the code the notebook calls, one module per step
+├── README.md                    this file
+├── task1_analysis.ipynb         the analysis, executed, with the reasoning behind every decision
+├── cyclone/                     the code the notebook calls, one module per step
+├── outputs/
+│   ├── shutdown_periods.csv     ┐
+│   ├── anomalous_periods.csv    │ the four required outputs
+│   ├── clusters_summary.csv     │
+│   ├── forecasts.csv            ┘
+│   └── supporting/              extra detail behind the required outputs
+│       ├── data_quality.csv
+│       ├── state_episodes.csv
+│       └── forecast_metrics.csv
+└── plots/                       19 figures, one subfolder per section of the brief (index below)
+    ├── 1_eda/
+    ├── 2_shutdowns/
+    ├── 3_states/
+    ├── 4_anomalies/
+    └── 5_forecast/
 ```
 
 | module | what it does |
@@ -50,34 +56,36 @@ Task1/
 
 | file | one row per | key columns |
 |---|---|---|
-| **`shutdown_periods.csv`** | shutdown (39) | start, end, duration_h, missing_pct |
-| **`anomalous_periods.csv`** | anomalous event (365) | start, end, duration_min, detector, state, top_variables (tag ± robust σ), peak_time, minutes_since_restart, minutes_to_next_shutdown |
-| **`clusters_summary.csv`** | operating state (6) | description, mean / std / p05 / p50 / p95 of every tag and derived feature, share of running time, episode count and duration stats |
-| **`forecasts.csv`** | (origin, horizon): 5,262 hourly origins × 12 steps | target_time, regime, y_true, pred_persistence, pred_arima, pred_gbm |
-| `supporting_outputs/forecast_metrics.csv` | (regime, model) | n, RMSE, MAE |
-| `supporting_outputs/data_quality.csv` | sensor | counts of each status code, invalid, dropout, stale, interpolated and still-missing samples |
-| `supporting_outputs/state_episodes.csv` | state episode (5,343) | state, start, end, duration_h |
+| **`outputs/shutdown_periods.csv`** | shutdown (39) | start, end, duration_h, missing_pct |
+| **`outputs/anomalous_periods.csv`** | anomalous event (365) | start, end, duration_min, detector, state, top_variables (tag ± robust σ), peak_time, minutes_since_restart, minutes_to_next_shutdown |
+| **`outputs/clusters_summary.csv`** | operating state (6) | description, mean / std / p05 / p50 / p95 of every tag and derived feature, share of running time, episode count and duration stats |
+| **`outputs/forecasts.csv`** | (origin, horizon): 5,262 hourly origins × 12 steps | target_time, regime, y_true, pred_persistence, pred_arima, pred_gbm |
+| `outputs/supporting/forecast_metrics.csv` | (regime, model) | n, RMSE, MAE |
+| `outputs/supporting/data_quality.csv` | sensor | counts of each status code, invalid, dropout, stale, interpolated and still-missing samples |
+| `outputs/supporting/state_episodes.csv` | state episode (5,343) | state, start, end, duration_h |
 
 ### Plot index (`plots/`)
 
+The file numbers follow the notebook order; the folders follow the brief's sections.
+
 | file | shows | brief section |
 |---|---|---|
-| `01_distributions.png` | value distributions of all six tags (log count): every tag is bimodal, off vs running | 1. EDA |
-| `02_corr_all.png`, `02_corr_running.png` | correlation matrix, all rows and running only | 1. EDA |
-| `03_week.png`, `03_year.png` | representative one-week and one-year slices | 1. EDA |
-| `04_shutdowns_2018.png` | one full year with every shutdown shaded | 2. Shutdowns |
-| `04_shutdown_durations.png` | shutdown duration distribution (short stops vs long outages) | 2. Shutdowns |
-| `05_states_scatter.png` | the six states in temperature-vs-draft space and in across-cyclone differentials (ΔT vs Δdraft) | 3. States |
-| `05_state_mix_monthly.png` | share of running time in each state, month by month | 3. States |
-| `06_temp_drop_drift.png` | inlet − outlet temperature over time: the thermocouple drift behind the "Degraded" state | 3. States |
-| `07_anomaly_timeline.png` | every anomalous event on the timeline, by detector | 4. Anomalies |
-| `08_rca_20170614_1130.png` | case A: transient fan trip with recovery | 4. Root cause |
-| `08_rca_20171227_2020.png` | case B: repeated draft disturbances and temperature overshoot | 4. Root cause |
-| `08_rca_20170909_0450.png` | case C: fan trip that turned into a stop | 4. Root cause |
-| `08_rca_20180621_1700.png` | case D: start-up sequence with an intermittent outlet thermocouple | 4. Root cause |
-| `08_rca_drift_2019.png` | case E: slow drift of the outlet gas thermocouple, Feb–Apr 2019 | 4. Root cause |
-| `09_fc_horizon_steady.png`, `09_fc_horizon_disturbed.png` | forecast error vs horizon for each model, steady and disturbed running | 5. Forecast |
-| `09_fc_example.png` | 30-minute-ahead forecasts from all three models against the actual signal through a disturbance (19 Jul 2020) | 5. Forecast |
+| `1_eda/01_distributions.png` | value distributions of all six tags (log count): every tag is bimodal, off vs running | 1. EDA |
+| `1_eda/02_corr_all.png`, `1_eda/02_corr_running.png` | correlation matrix, all rows and running only | 1. EDA |
+| `1_eda/03_week.png`, `1_eda/03_year.png` | representative one-week and one-year slices | 1. EDA |
+| `2_shutdowns/04_shutdowns_2018.png` | one full year with every shutdown shaded | 2. Shutdowns |
+| `2_shutdowns/04_shutdown_durations.png` | shutdown duration distribution (short stops vs long outages) | 2. Shutdowns |
+| `3_states/05_states_scatter.png` | the six states in temperature-vs-draft space and in across-cyclone differentials (ΔT vs Δdraft) | 3. States |
+| `3_states/05_state_mix_monthly.png` | share of running time in each state, month by month | 3. States |
+| `3_states/06_temp_drop_drift.png` | inlet − outlet temperature over time: the thermocouple drift behind the "Degraded" state | 3. States |
+| `4_anomalies/07_anomaly_timeline.png` | every anomalous event on the timeline, by detector | 4. Anomalies |
+| `4_anomalies/08_rca_20170614_1130.png` | case A: transient fan trip with recovery | 4. Root cause |
+| `4_anomalies/08_rca_20171227_2020.png` | case B: repeated draft disturbances and temperature overshoot | 4. Root cause |
+| `4_anomalies/08_rca_20170909_0450.png` | case C: fan trip that turned into a stop | 4. Root cause |
+| `4_anomalies/08_rca_20180621_1700.png` | case D: start-up sequence with an intermittent outlet thermocouple | 4. Root cause |
+| `4_anomalies/08_rca_drift_2019.png` | case E: slow drift of the outlet gas thermocouple, Feb–Apr 2019 | 4. Root cause |
+| `5_forecast/09_fc_horizon_steady.png`, `5_forecast/09_fc_horizon_disturbed.png` | forecast error vs horizon for each model, steady and disturbed running | 5. Forecast |
+| `5_forecast/09_fc_example.png` | 30-minute-ahead forecasts from all three models against the actual signal through a disturbance (19 Jul 2020) | 5. Forecast |
 
 ## Approach in one table
 
