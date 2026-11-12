@@ -265,3 +265,54 @@ def duration_hist(events, path=None):
     ax.set_ylabel("events")
     ax.set_title("Two populations: stops under 2.5 days, and outages of 4-42 days")
     return save(fig, path)
+
+
+def sensitivity_grid(grid: pd.DataFrame, path=None):
+    """One heatmap per hysteresis value: events (colour + number) and downtime per cell."""
+    hys = sorted(grid["hysteresis_c"].unique())
+    fig, axes = plt.subplots(1, len(hys), figsize=(3.6 * len(hys), 3.4), sharey=True)
+    vmin, vmax = grid["events"].min(), grid["events"].max()
+    for ax, hy in zip(np.atleast_1d(axes), hys):
+        g = grid[grid["hysteresis_c"] == hy]
+        rows, cols = list(dict.fromkeys(g["merge_gap"])), list(dict.fromkeys(g["min_length"]))
+        ev = g.pivot(index="merge_gap", columns="min_length", values="events").loc[rows, cols]
+        dt = g.pivot(index="merge_gap", columns="min_length", values="downtime_h").loc[rows, cols]
+        ax.imshow(ev.to_numpy(), cmap="Greys", vmin=vmin - 3, vmax=vmax + 30)
+        for i in range(len(rows)):
+            for j in range(len(cols)):
+                default = bool(g[(g["merge_gap"] == rows[i]) & (g["min_length"] == cols[j])]["is_default"].iloc[0])
+                ax.text(j, i, f"{ev.iat[i, j]}\n{dt.iat[i, j]:,.0f} h", ha="center", va="center", fontsize=8,
+                        fontweight="bold" if default else "normal", color="#c0392b" if default else "black")
+        ax.set_xticks(range(len(cols)), cols)
+        ax.set_yticks(range(len(rows)), rows)
+        ax.set_xlabel("minimum length")
+        ax.grid(False)
+        ax.set_title(f"hysteresis +{hy:.0f} °C", fontsize=10)
+    np.atleast_1d(axes)[0].set_ylabel("merge stops closer than")
+    fig.suptitle("Shutdown rules: events and downtime per setting (red = the setting used)", fontweight="bold", fontsize=11)
+    fig.tight_layout()
+    return save(fig, path)
+
+
+def precursor_lift(lift: pd.DataFrame, window: str, path=None):
+    """Share of fan stops with each precursor in the look-back vs share of random running times."""
+    d = lift[(lift["window"] == window) & (lift["scope"] == "clean look-back")]
+    pre = list(dict.fromkeys(d["precursor"]))
+    fig, axes = plt.subplots(1, 2, figsize=(12, 3.8), sharey=True)
+    y = np.arange(len(pre))
+    for ax, (target, g) in zip(axes, d.groupby("target", sort=False)):
+        g = g.set_index("precursor").loc[pre]
+        ax.barh(y - 0.2, g["pct_of_events"], height=0.38, color="#c0392b", label=f"before a {target}")
+        ax.barh(y + 0.2, g["pct_of_random_times"], height=0.38, color=SHUTDOWN_COLOR, label="at random running times")
+        for yi, (p, l, n) in enumerate(zip(g["pct_of_events"], g["lift"], g["events_with_precursor"])):
+            ax.text(p + 1, yi - 0.2, f"{n} of {g['events'].iloc[0]}  ({l:.1f}x)", va="center", fontsize=7.5)
+        ax.set_yticks(y, pre)
+        ax.set_xlim(0, max(60, d["pct_of_events"].max() + 20))
+        ax.set_xlabel(f"% with the signal {window}")
+        ax.set_title(f"{target}s ({g['events'].iloc[0]} with a clean look-back)", fontsize=10)
+        ax.legend(loc="lower right")
+    axes[0].invert_yaxis()  # shared y: once only
+    fig.suptitle("Signals before the fan stops: more frequent than at random, but rare in absolute terms",
+                 fontweight="bold", fontsize=11)
+    fig.tight_layout()
+    return save(fig, path)

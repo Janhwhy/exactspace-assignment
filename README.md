@@ -19,14 +19,15 @@ Janhavi_Bhattad_DataScience/
 ├── README.md                      this file
 ├── Final_Presentation.pptx        summary deck, both tasks
 ├── pyproject.toml, uv.lock        pinned Python 3.12 environment (uv)
-├── requirements.txt               the same pins for pip
+├── requirements.txt               15 direct dependencies, exact versions (pip)
+├── requirements-lock.txt          every package pinned, the same as uv.lock
 │
 ├── Task1/                         machine data analysis
 │   ├── README.md                  run steps, method table, plot index, results, limitations
 │   ├── task1_analysis.ipynb       the analysis, executed
 │   ├── shutdown_periods.csv, anomalous_periods.csv, clusters_summary.csv, forecasts.csv   (required)
-│   ├── outputs/supporting/        4 more CSVs: fan-off periods, data quality, state episodes, forecast metrics
-│   ├── plots/                     19 PNGs in 5 subfolders, one per section of the brief
+│   ├── outputs/supporting/        10 more CSVs: fan-off periods, precursors and alert rules, sensitivity, forecast metrics …
+│   ├── plots/                     21 PNGs in 5 subfolders, one per section of the brief
 │   ├── cyclone/                   the code the notebook calls, one module per step
 │   └── data/data.xlsx             the raw export, so the notebook runs as delivered
 │
@@ -38,7 +39,7 @@ Janhavi_Bhattad_DataScience/
     └── prototype/
         ├── README.md              exact setup and run steps, models, results
         ├── rag_prototype.py       the runnable prototype
-        ├── evaluation/            evaluation.csv (retrieval metrics), questions, end-to-end results, hand grades, NLI calibration
+        ├── evaluation/            evaluation.csv (retrieval metrics), tuned and held-out questions, end-to-end results, hand grades, NLI calibration
         └── docs/                  the 11 source PDFs
 ```
 
@@ -64,7 +65,7 @@ All the Python code runs in one Python 3.12 environment. From the repository roo
 python3.12 -m venv .venv && .venv/bin/pip install -r requirements.txt    # or, with uv: uv sync
 ```
 
-No `python3.12` on the machine? Run `uv venv --python 3.12 --seed .venv` instead (uv downloads Python 3.12), then the same `pip install` line. The pins need Python 3.12.
+The pins need **Python 3.12**. No `python3.12` on the machine? Run `uv venv --python 3.12 --seed .venv` instead (uv downloads Python 3.12), then the same `pip install` line. `requirements.txt` pins the 15 direct dependencies and lets pip resolve the rest. If a newer transitive package ever breaks something, `pip install -r requirements-lock.txt` installs exactly the tested set.
 
 **Task 1** runs as delivered: the raw data is included at `Task1/data/data.xlsx`.
 
@@ -82,7 +83,8 @@ cd Task2/prototype
 ollama pull qwen2.5:3b                                     # for generated, cited answers
 ../../.venv/bin/python rag_prototype.py ask "What are the steps to start up the Kice cyclone?"
 ../../.venv/bin/python rag_prototype.py chat               # interactive; empty line to quit
-../../.venv/bin/python rag_prototype.py eval --llm         # the full 37-question evaluation
+../../.venv/bin/python rag_prototype.py eval --llm         # the 37-question tuned evaluation
+../../.venv/bin/python rag_prototype.py eval --llm --set heldout   # the 21 held-out questions
 ```
 
 The index builds automatically on first use. The embedding, reranker and NLI models (~500 MB) download from Hugging Face the first time, with no account needed.
@@ -90,20 +92,25 @@ The index builds automatically on first use. The embedding, reranker and NLI mod
 ## Headline results
 
 **Task 1**
-- **Shutdowns:** 39 events and 6,286 h of downtime, 19.9% of the record. The threshold comes from the data (Otsu, 477 °C), and moving it by ±50 °C changes downtime by less than 2%.
-- **Shutdown definition:** the line going cold. ID-fan trips, where the fan stops but the gas stays hot, are incidents, not stops. Counting every fan trip as a stop would give 196 events instead of 39.
-- **States and incidents:** idle and fan-off time is excluded before clustering, which leaves four running states (High load, Normal load, Unstable draft, Degraded thermocouple; bootstrap ARI 0.98). ID-fan trips are the dominant incident: 91 transient and 66 extended. All 39 shutdowns begin with the fan stopping, a median ~7 h before the gas cools past the threshold.
-- **Instrument faults:** part of what looks like process behaviour is really instrument fault. The outlet thermocouple drifts, and the material temperature transmitter is unreliable.
-- **1-hour forecast:** gradient boosting beats persistence by 21% RMSE in steady running (13.6 vs 17.3 °C; MAE 10.0 vs 12.7). In disturbed operation the gain is 25% (41.7 vs 55.4 °C; MAE 27.9 vs 38.7).
-  - Disturbed windows are 4.5% of the test set but carry about 35% of the error, so results are reported per regime.
+- **Shutdowns:** 39 events and 6,286 h of downtime, 19.9% of the record. A shutdown is the line going cold, with the threshold taken from the data (Otsu, 477 °C). All 27 combinations of the event rules give 36–43 events, and downtime stays within 1%. ID-fan trips, where the fan stops but the gas stays hot, are incidents, not stops; counting them would give 196 events.
+- **States:** idle and fan-off time is removed first, which leaves four running states (High load, Normal load, Unstable draft, Degraded thermocouple; bootstrap ARI 0.98).
+- **Incidents:** 157 ID-fan trips, and all 39 shutdowns begin with the fan stopping, a median ~7 h before the gas is cold.
+- **Alerts, with measured evidence:** nothing in the six tags warns of a fan trip 15–120 min ahead; every candidate alert is right ≤ 7% of the time.
+  - *Rule 1, fan-off alarm:* 1.3 firings per running week; 93% are confirmed by the temperature drop.
+  - *Rule 2, escalation:* fan still off after 60 min with inlet gas below 700 °C. 59% of firings become a shutdown, with a median 4.7 h of warning.
+- **1-hour forecast:** gradient boosting beats persistence by 21% RMSE in steady running and 25% in disturbed running. On the 23 stops and restarts of a 2019 test year, it is 11.7 °C better (95% CI −19.7 to −2.4).
 
 **Task 2**
-
-The 37-question evaluation covers 28 answerable, 4 off-topic and 5 sensitive questions.
-- Hybrid retrieval with reranking reaches recall@5 0.97 and MRR 1.00.
-- **Answer accuracy, graded by hand against the source pages: 18 of 28 correct, 6 partial, 4 wrong (64% correct, 86% correct or partial).** Every generated answer cites a correct page, so citing the right page is not the same as answering correctly.
-- An NLI faithfulness check (DeBERTa-v3) rejects answers that contradict their sources: 2 of 28 real answers, and 21 of 29 planted errors in calibration, with 0 of 46 correct sentences rejected. Its low-support warning appeared on all 4 wrong answers.
-- All 4 off-topic questions are declined, and all 5 sensitive requests are refused, with no false refusals.
-- Median answer time is 3 s on a laptop, including the NLI check.
+- **Retrieval:** recall@5 0.97 and MRR 1.00 on 28 tuned questions; 0.93 / 0.86 on 14 held-out questions that were never tuned on.
+- **Answer accuracy, graded by hand against the source pages:**
+  - tuned set: 19 correct, 6 partial, 3 wrong (68%);
+  - held-out set: 10 correct, 1 partial, 3 wrong (71%, against 57% for the previous pipeline);
+  - every remaining error is named, with its cause, in `Task2/notes.md`.
+- **Guards:**
+  - table rows are chunked so answers don't mix rows;
+  - a number/unit-next-to-subject check;
+  - equipment attribution across manuals;
+  - an NLI contradiction check: 0 of 60 correct sentences rejected, 27 of 38 planted errors caught.
+- **Safety:** all unsafe requests refused, including weapons and explosives, with no false refusals on 48 normal questions (some of them about explosive atmospheres). Median answer time is 2.5 s on a laptop.
 
 Each task's README and `Task2/notes.md` list the limitations and what I would do next.

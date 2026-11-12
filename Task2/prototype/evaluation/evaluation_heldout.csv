@@ -1,0 +1,5 @@
+method,questions,precision@5,recall@5,hit@5,mrr,storm_sop_share_in_topk
+bm25,14,0.343,0.929,0.929,0.929,0.014
+dense,14,0.329,0.929,0.929,0.827,0.0
+hybrid,14,0.357,0.929,0.929,0.893,0.0
+hybrid_rerank,14,0.229,0.929,0.929,0.857,0.014

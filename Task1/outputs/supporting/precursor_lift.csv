@@ -1,0 +1,57 @@
+window,scope,target,precursor,events,events_with_precursor,pct_of_events,pct_of_random_times,lift
+15-60 min before,all,shutdown,IF flag,39,9,23.1,1.8,12.8
+15-60 min before,all,shutdown,Unstable-draft state,39,9,23.1,3.6,6.4
+15-60 min before,all,shutdown,draft weakening (30 min),39,14,35.9,4.6,7.7
+15-60 min before,all,shutdown,draft noisy (1 h std),39,7,17.9,1.9,9.7
+15-60 min before,all,shutdown,inlet temp falling (30 min),39,6,15.4,6.9,2.2
+15-60 min before,all,shutdown,inlet temp rising (30 min),39,14,35.9,5.7,6.3
+15-60 min before,all,shutdown,tag fault (any tag missing),39,1,2.6,2.1,1.2
+15-60 min before,all,fan trip,IF flag,157,21,13.4,1.8,7.4
+15-60 min before,all,fan trip,Unstable-draft state,157,33,21.0,3.6,5.9
+15-60 min before,all,fan trip,draft weakening (30 min),157,21,13.4,4.6,2.9
+15-60 min before,all,fan trip,draft noisy (1 h std),157,22,14.0,1.9,7.6
+15-60 min before,all,fan trip,inlet temp falling (30 min),157,23,14.6,6.9,2.1
+15-60 min before,all,fan trip,inlet temp rising (30 min),157,41,26.1,5.7,4.6
+15-60 min before,all,fan trip,tag fault (any tag missing),157,5,3.2,2.1,1.5
+15-60 min before,clean look-back,shutdown,IF flag,31,9,29.0,1.5,19.4
+15-60 min before,clean look-back,shutdown,Unstable-draft state,31,5,16.1,2.6,6.3
+15-60 min before,clean look-back,shutdown,draft weakening (30 min),31,14,45.2,4.5,10.1
+15-60 min before,clean look-back,shutdown,draft noisy (1 h std),31,3,9.7,1.1,8.8
+15-60 min before,clean look-back,shutdown,inlet temp falling (30 min),31,5,16.1,6.5,2.5
+15-60 min before,clean look-back,shutdown,inlet temp rising (30 min),31,11,35.5,4.9,7.2
+15-60 min before,clean look-back,shutdown,tag fault (any tag missing),31,1,3.2,2.0,1.6
+15-60 min before,clean look-back,fan trip,IF flag,129,14,10.9,1.5,7.2
+15-60 min before,clean look-back,fan trip,Unstable-draft state,129,7,5.4,2.6,2.1
+15-60 min before,clean look-back,fan trip,draft weakening (30 min),129,19,14.7,4.5,3.3
+15-60 min before,clean look-back,fan trip,draft noisy (1 h std),129,6,4.7,1.1,4.2
+15-60 min before,clean look-back,fan trip,inlet temp falling (30 min),129,17,13.2,6.5,2.0
+15-60 min before,clean look-back,fan trip,inlet temp rising (30 min),129,20,15.5,4.9,3.2
+15-60 min before,clean look-back,fan trip,tag fault (any tag missing),129,4,3.1,2.0,1.5
+15-120 min before,all,shutdown,IF flag,39,13,33.3,3.4,9.9
+15-120 min before,all,shutdown,Unstable-draft state,39,9,23.1,5.3,4.4
+15-120 min before,all,shutdown,draft weakening (30 min),39,16,41.0,9.1,4.5
+15-120 min before,all,shutdown,draft noisy (1 h std),39,7,17.9,3.0,5.9
+15-120 min before,all,shutdown,inlet temp falling (30 min),39,12,30.8,12.8,2.4
+15-120 min before,all,shutdown,inlet temp rising (30 min),39,17,43.6,10.5,4.2
+15-120 min before,all,shutdown,tag fault (any tag missing),39,1,2.6,2.6,1.0
+15-120 min before,all,fan trip,IF flag,157,26,16.6,3.4,4.9
+15-120 min before,all,fan trip,Unstable-draft state,157,38,24.2,5.3,4.6
+15-120 min before,all,fan trip,draft weakening (30 min),157,33,21.0,9.1,2.3
+15-120 min before,all,fan trip,draft noisy (1 h std),157,29,18.5,3.0,6.1
+15-120 min before,all,fan trip,inlet temp falling (30 min),157,32,20.4,12.8,1.6
+15-120 min before,all,fan trip,inlet temp rising (30 min),157,52,33.1,10.5,3.2
+15-120 min before,all,fan trip,tag fault (any tag missing),157,5,3.2,2.6,1.2
+15-120 min before,clean look-back,shutdown,IF flag,31,11,35.5,2.6,13.6
+15-120 min before,clean look-back,shutdown,Unstable-draft state,31,5,16.1,3.7,4.4
+15-120 min before,clean look-back,shutdown,draft weakening (30 min),31,15,48.4,8.7,5.6
+15-120 min before,clean look-back,shutdown,draft noisy (1 h std),31,3,9.7,1.7,5.6
+15-120 min before,clean look-back,shutdown,inlet temp falling (30 min),31,11,35.5,11.9,3.0
+15-120 min before,clean look-back,shutdown,inlet temp rising (30 min),31,13,41.9,9.1,4.6
+15-120 min before,clean look-back,shutdown,tag fault (any tag missing),31,1,3.2,2.6,1.3
+15-120 min before,clean look-back,fan trip,IF flag,125,12,9.6,2.6,3.7
+15-120 min before,clean look-back,fan trip,Unstable-draft state,125,8,6.4,3.7,1.7
+15-120 min before,clean look-back,fan trip,draft weakening (30 min),125,26,20.8,8.7,2.4
+15-120 min before,clean look-back,fan trip,draft noisy (1 h std),125,9,7.2,1.7,4.1
+15-120 min before,clean look-back,fan trip,inlet temp falling (30 min),125,21,16.8,11.9,1.4
+15-120 min before,clean look-back,fan trip,inlet temp rising (30 min),125,24,19.2,9.1,2.1
+15-120 min before,clean look-back,fan trip,tag fault (any tag missing),125,4,3.2,2.6,1.2

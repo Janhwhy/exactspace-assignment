@@ -1,76 +1,76 @@
 qid,kind,entailment,contradiction,rejected,sentence
-q01,real,0.992,0.001,False,"The main indicators used to monitor how well a cyclone is performing are opacity, inlet gas velocity, and pressure differential."
-q01,planted_error,0.067,0.964,True,"The main indicators used to monitor how well a cyclone is not performing are opacity, inlet gas velocity, and pressure differential."
-q02,real,0.033,0.006,False,"Pressure drop across a cyclone can be used as a surrogate for measuring gas velocity because it is primarily a function of velocity, as stated in."
-q02,planted_error,0.024,0.973,True,"Pressure drop across a cyclone can not be used as a surrogate for measuring gas velocity because it is primarily a function of velocity, as stated in."
-q04,real,0.028,0.001,False,"If suction at the dust source has become weak, you should inspect and check: - system settings, especially the fan - pipes; dirt in the form of rags, crumpled newspapers, etc."
-q04,planted_error,0.022,0.997,True,"If suction at the dust source has become weak, you should not inspect and check: - system settings, especially the fan - pipes; dirt in the form of rags, crumpled newspapers, etc."
+q01,real,0.993,0.001,False,"The main indicators used to monitor how well a cyclone is performing are opacity, inlet velocity, and pressure differential."
+q01,planted_error,0.07,0.963,True,"The main indicators used to monitor how well a cyclone is not performing are opacity, inlet velocity, and pressure differential."
+q02,real,0.011,0.067,False,"Pressure drop across a cyclone can be used instead of measuring gas velocity because it is primarily a function of velocity, allowing it to serve as a surrogate for velocity measurements."
+q02,planted_error,0.005,0.314,False,"Pressure drop across a cyclone can not be used instead of measuring gas velocity because it is primarily a function of velocity, allowing it to serve as a surrogate for velocity measurements."
+q04,real,0.035,0.001,False,"If suction at the dust source has become weak, you should check: - system settings, especially the fan - pipes; dirt in the form of rags, crumpled newspapers, etc."
+q04,planted_error,0.048,0.998,True,"If suction at the dust source has become weak, you should not check: - system settings, especially the fan - pipes; dirt in the form of rags, crumpled newspapers, etc."
 q04,real,0.984,0.001,False,could have got stuck here.
 q05,real,0.979,0.006,False,The guaranteed dust removal rate is between 70-95% depending on the type of dust and the extraction conditions.
-q05,planted_error,0.009,0.997,True,The guaranteed dust removal rate is between 217-95% depending on the type of dust and the extraction conditions.
-q06,real,0.961,0.001,False,recommends storage at a temperature of from -25 °C to +50 °C and humidity <60%.
-q06,planted_error,0.355,0.876,True,recommends storage at a temperature of from -82 °C to +50 °C and humidity <60%.
-q07,real,0.972,0.002,False,Water comes out with the steam from the separator outlet due to steam/air flow velocity being too high.
-q07,real,0.816,0.051,False,It is fixed by taking steps necessary to lower the steam/air flow velocity.
-q07,planted_error,0.01,0.994,True,It is not fixed by taking steps necessary to lower the steam/air flow velocity.
-q08,real,0.827,0.003,False,states that the TLV separator should be tilted no more than 10° horizontally.
-q08,planted_error,0.828,0.003,False,states that the TLV separator should be tilted no more than 37° horizontally.
-q09,real,0.971,0.035,False,"If the gas speed through the cyclone is too low, it results in an accumulation of ashes in the fume tubes and in the fume fittings of the heat generator, and poor filtration due to a lack of centrifugation on the cyclone walls."
-q09,planted_error,0.62,0.318,False,"If the gas speed through the cyclone is not too low, it results in an accumulation of ashes in the fume tubes and in the fume fittings of the heat generator, and poor filtration due to a lack of centrifugation on the cyclone walls."
-q09,real,0.932,0.033,False,"If the gas speed is too high, it leads to the excessive transport of hot ashes in the Cyclone Separator and poor filtration due to the transport of average sized solid particles for the current fluid flow effect."
-q09,planted_error,0.062,0.955,True,"If the gas speed is not too high, it leads to the excessive transport of hot ashes in the Cyclone Separator and poor filtration due to the transport of average sized solid particles for the current fluid flow effect."
+q05,planted_error,0.009,0.995,True,The guaranteed dust removal rate is between 217-95% depending on the type of dust and the extraction conditions.
+q07,real,0.005,0.001,False,Water comes out with the steam from the separator outlet due to either improper installation or steam/air flow velocity being too high.
+q09,real,0.981,0.036,False,"If the gas speed through the cyclone is too low, it results in an accumulation of ashes in the fume tubes and fittings of the heat generator, and poor filtration due to a lack of centrifugation on the cyclone walls."
+q09,planted_error,0.774,0.316,False,"If the gas speed through the cyclone is not too low, it results in an accumulation of ashes in the fume tubes and fittings of the heat generator, and poor filtration due to a lack of centrifugation on the cyclone walls."
+q09,real,0.925,0.038,False,"If the gas speed is too high, it leads to the excessive transport of hot ashes in the cyclone separator and poor filtration due to the transport of average sized solid particles for the current fluid flow effect."
+q09,planted_error,0.07,0.958,True,"If the gas speed is not too high, it leads to the excessive transport of hot ashes in the cyclone separator and poor filtration due to the transport of average sized solid particles for the current fluid flow effect."
 q10,real,0.986,0.002,False,Ash should be emptied from the cyclone at the end of the season shutdown.
 q10,planted_error,0.026,0.998,True,Ash should not be emptied from the cyclone at the end of the season shutdown.
 q10,real,0.936,0.0,False,"Precautions include shutting off power, allowing the cyclone to cool before cleaning, and applying a rust inhibitor to prevent corrosion during the off-season."
-q10,real,0.161,0.004,False,Empty all ash from the cyclone and clean any ash from the sides of the cyclone.
-q11,real,0.994,0.001,False,Ensure all personnel are clear of moving parts.
-q11,planted_error,0.012,0.99,True,Ensure all personnel are not clear of moving parts.
-q11,real,0.992,0.001,False,"Start accessory equipment like fans, filters, and airlock valves."
-q11,real,0.988,0.001,False,Start conveying equipment beneath the Cyclone discharge.
-q11,real,0.995,0.001,False,Feed material into the system.
-q11,real,0.878,0.018,False,Gradually open the fan damper until excessive material is detected.
-q11,planted_error,0.086,0.992,True,Gradually open the fan damper until excessive material is not detected.
-q11,real,0.989,0.001,False,Adjust airflow by slightly closing the fan damper and locking it in place.
-q12,real,0.993,0.001,False,The Kice Cyclone does not require lubrication or periodic servicing due to the absence of moving parts.
-q12,real,0.965,0.005,False,"However, regular examination of the cyclone for wear and damage is necessary."
-q12,planted_error,0.051,0.979,True,"However, regular examination of the cyclone for wear and damage is not necessary."
-q13,real,0.995,0.001,False,"Special ATEX Information states that when installing any electric or non-electric equipment on the cyclone, all components must be suitable for being operated in zone 22, meaning they must fulfill the ATEX requirements for Group II category 3D equipment."
-q13,planted_error,0.003,0.993,True,"Special ATEX Information states that when installing any electric or non-electric equipment on the cyclone, all components must be suitable for being operated in zone 73, meaning they must fulfill the ATEX requirements for Group II category 3D equipment."
-q14,real,0.983,0.001,False,The impellor of any associated fan should be inspected with the aid of a torch for any signs of material build up on its blades.
-q14,planted_error,0.004,0.999,True,The impellor of any associated fan should not be inspected with the aid of a torch for any signs of material build up on its blades.
-q15,real,0.041,0.018,False,The extraction system must be formally tested for safe operation every fourteen months.
-q15,planted_error,0.072,0.827,True,The extraction system must not be formally tested for safe operation every fourteen months.
-q16,real,0.037,0.006,False,"The G type cyclone is designed for coarse applications, such as wood waste and grain, with a singular filter role."
-q16,planted_error,0.041,0.844,True,"The G type cyclone is not designed for coarse applications, such as wood waste and grain, with a singular filter role."
-q16,real,0.003,0.004,False,"The M type cyclone maintains a constant inlet speed for all sizes, suitable for separation efficiency up to 70-95%, while the H type cyclone does not counteract efficiency drop with increasing size, limiting its maximum economical size to 48""."
-q16,planted_error,0.002,0.004,False,"The M type cyclone maintains a constant inlet speed for all sizes, suitable for separation efficiency up to 217-95%, while the H type cyclone does not counteract efficiency drop with increasing size, limiting its maximum economical size to 48""."
-q17,real,0.026,0.003,False,"The likely causes of insufficient airflow in the dust collector are: improper electrical wiring, improper motor starter overload rating, and fan rotation is backwards."
-q17,planted_error,0.116,0.045,False,"The likely causes of insufficient airflow in the dust collector are not: improper electrical wiring, improper motor starter overload rating, and fan rotation is backwards."
-q18,real,0.992,0.001,False,"states that for fine dust and dust with low densities, the cyclone should be considered only as a pre-cleaner."
-q18,planted_error,0.037,0.997,True,"states that for fine dust and dust with low densities, the cyclone should not be considered only as a pre-cleaner."
+q11,real,0.992,0.001,False,Ensure all personnel are clear of any moving pieces of equipment.
+q11,planted_error,0.007,0.995,True,Ensure all personnel are not clear of any moving pieces of equipment.
+q11,real,0.987,0.001,False,"Start the motors on the Cyclone accessory equipment, such as fans, filters, and airlock valves."
+q11,real,0.982,0.005,False,Start any conveying equipment mounted beneath the discharge of the Cyclone.
+q11,real,0.985,0.006,False,Start the material feeding into the system.
+q11,real,0.98,0.004,False,Begin opening the fan damper until excessive material is detected in the output stream.
+q11,planted_error,0.076,0.994,True,Begin opening the fan damper until excessive material is not detected in the output stream.
+q11,real,0.773,0.007,False,Slightly decrease the airflow by slowly closing the fan damper and lock the damper in place at the optimum setting.
+q12,real,0.994,0.001,False,The Kice cyclone does not require lubrication or periodic servicing as there are no moving parts to wear out or malfunction.
+q12,planted_error,0.991,0.002,False,The Kice cyclone does not require lubrication or periodic servicing as there are not no moving parts to wear out or malfunction.
+q12,real,0.98,0.005,False,"However, regular examination for signs of wear and damage is necessary."
+q12,planted_error,0.022,0.991,True,"However, regular examination for signs of wear and damage is not necessary."
+q13,real,0.627,0.128,False,Grounding is required when installing the cyclone in an explosive atmosphere.
+q13,planted_error,0.029,0.99,True,Grounding is not required when installing the cyclone in an explosive atmosphere.
+q14,real,0.006,0.001,False,Six Monthly inspections should be conducted on the impellor of any associated fan and on the mechanical integrity of the cyclone and connected dust extraction system.
+q14,planted_error,0.001,0.934,True,Six Monthly inspections should not be conducted on the impellor of any associated fan and on the mechanical integrity of the cyclone and connected dust extraction system.
+q15,real,0.974,0.012,False,The extraction system must be tested for correct and safe operation every fourteen months.
+q15,planted_error,0.016,0.976,True,The extraction system must not be tested for correct and safe operation every fourteen months.
+q16,real,0.977,0.005,False,"The G type cyclone has a larger body diameter compared to the M and H types, which allows for higher inlet speeds to counteract the angular distance traveled before the particle contacts the cyclone body."
+q16,real,0.954,0.258,False,"For the M, H, and MC types, the inlet speed is standard across different body diameters, and the W.G."
+q16,planted_error,0.8,0.091,False,"For the M, H, and MC types, the inlet speed is not standard across different body diameters, and the W.G."
+q16,real,0.994,0.002,False,"consumption remains constant, limiting the maximum economical size to about 48"", though some cases can use up to 60""."
+q16,planted_error,0.273,0.713,True,"consumption remains constant, limiting the maximum economical size to about 151"", though some cases can use up to 60""."
+q17,real,0.299,0.004,False,"The likely causes of insufficient airflow in the dust collector are: Loose or open access door, Duct damper(s) or system damper is not positioned properly, Air inlet(s) obstructed, Large leak in storage container, Leaks in ductwork, and Plugged ductwork."
+q17,planted_error,0.216,0.087,False,"The likely causes of insufficient airflow in the dust collector are not: Loose or open access door, Duct damper(s) or system damper is not positioned properly, Air inlet(s) obstructed, Large leak in storage container, Leaks in ductwork, and Plugged ductwork."
+q18,real,0.996,0.0,False,A cyclone should be considered only as a pre-cleaner for fine dust and dust with low densities.
+q18,planted_error,0.042,0.997,True,A cyclone should not be considered only as a pre-cleaner for fine dust and dust with low densities.
 q18,real,0.989,0.001,False,Secondary filtration may be required.
-q19,real,0.067,0.026,False,"To check the fan belt tension, loosen bolts on motor mounting plate and adjust tension screws on adjustment bracket in or out (depending on desired adjustment), then re-tighten bolts on motor mounting plate."
+q19,real,0.074,0.021,False,"To check the fan belt tension, loosen bolts on the motor mounting plate and adjust the tension screws on the adjustment bracket in or out (depending on desired adjustment), then re-tighten bolts on the motor mounting plate."
 q19,real,0.764,0.008,False,Check the tension frequently to be sure the deflection is at the value determined.
 q19,planted_error,0.011,0.995,True,Check the tension frequently to be sure the deflection is not at the value determined.
-q21,real,0.062,0.005,False,Roping in a cyclone occurs when the underflow discharge from the spigot collapses into a solid stream instead of a hollow cone.
-q21,real,0.958,0.71,False,"This happens when the flare angle decreases and the air core cannot maintain the flow, causing the underflow to become denser and solid."
-q21,real,0.03,0.049,False,"The cause is using a spigot that is too small, preventing the air core from operating efficiently."
-q21,planted_error,0.011,0.899,True,"The cause is not using a spigot that is too small, preventing the air core from operating efficiently."
-q23,real,0.027,0.41,False,The d50 cut point refers to the particle size where 50% of particles are smaller and 50% are larger.
-q23,planted_error,0.002,0.968,True,The d157 cut point refers to the particle size where 50% of particles are smaller and 50% are larger.
-q23,real,0.838,0.004,False,"It describes the cyclone's particle size separation capability, not the feed stream's grading."
-q24,real,0.169,0.377,False,The maximum feed pressure for a 400 mm diameter cyclone is 200 kPa.
-q24,planted_error,0.027,0.067,False,The maximum feed pressure for a 1207 mm diameter cyclone is 200 kPa.
-q25,real,0.973,0.002,False,recommends internal inspections every two months until the wear rate is established.
-q25,planted_error,0.722,0.372,False,recommends internal inspections every two months until the wear rate is not established.
-q25,real,0.044,0.001,False,"suggests monthly visual inspections, which is more frequent than the general recommendation."
-q25,planted_error,0.101,0.001,False,"suggests monthly visual inspections, which is not more frequent than the general recommendation."
-q26,real,0.925,0.005,False,People are protected from hot surfaces on the cyclone by wearing protective gloves.
-q26,planted_error,0.032,0.475,False,People are not protected from hot surfaces on the cyclone by wearing protective gloves.
-q26,real,0.991,0.001,False,"Hazards come from the passage of hot fumes inside the cyclone which heats its piping and surfaces, leading to burns during operation."
-q27,real,0.369,0.001,False,"The Shipowner, the Charterer, the Master, and the Crew are responsible for taking preventive actions on ships after a cyclone advisory is issued."
-q27,planted_error,0.01,0.997,True,"The Shipowner, the Charterer, the Master, and the Crew are not responsible for taking preventive actions on ships after a cyclone advisory is issued."
-q28,real,0.89,0.006,False,"When the DG Comm Centre receives a cyclone or storm warning, they inform N.A and N.S (Casualty & Response) by phone."
-q28,real,0.977,0.004,False,"They also forward the warning to Indian shipping companies, charterers (approved by the DGS), and Indian ship-owners association such as ICCSA, INSA."
-q28,real,0.986,0.003,False,"The message should entail specific instructions towards safety of life, environment, and property at sea during the passage of the cyclone."
-q28,planted_error,0.005,0.999,True,"The message should not entail specific instructions towards safety of life, environment, and property at sea during the passage of the cyclone."
+q20,real,0.011,0.001,False,"To operate the cyclone dust collector day to day, simply turn on the blower."
+q20,real,0.937,0.025,False,Adjust airflow with volume control dampers on individual ductwork drops.
+q20,real,0.978,0.002,False,"Verify that any hopper slide gates are closed and that the doors, drum lids, and gaskets are in place."
+q20,planted_error,0.107,0.998,True,"Verify that any hopper slide gates are not closed and that the doors, drum lids, and gaskets are in place."
+q20,real,0.988,0.0,False,"Check that exhaust air remains visibly clean and examine drums, drum lids, etc."
+q20,real,0.988,0.001,False,Ensure the blower compartment bolt-on panel is installed before operating the dust collector.
+q20,planted_error,0.081,0.998,True,Ensure the blower compartment bolt-on panel is not installed before operating the dust collector.
+q20,real,0.012,0.001,False,"Follow safety precautions such as disconnecting electrical power, wearing appropriate protective clothing, and keeping flammable materials away from the unit."
+q20,real,0.234,0.001,False,Operate only in a safe and serviceable condition and maintain the unit according to the manual.
+q21,real,0.096,0.005,False,"Roping in a cyclone occurs when the underflow discharge from the spigot collapses into a solid stream instead of a hollow cone, indicating a lack of air core."
+q21,real,0.115,0.093,False,"This happens when the spigot is too small, preventing the air core from forming, or too large, allowing too much water to leave."
+q21,planted_error,0.384,0.133,False,"This happens when the spigot is not too small, preventing the air core from forming, or too large, allowing too much water to leave."
+q21,real,0.005,0.001,False,"The correct flare angle is 30 to 40 degrees, and the spigot size should match the amount of feed to the cyclone to maintain an air core and prevent roping."
+q21,planted_error,0.005,0.005,False,"The correct flare angle is 97 to 40 degrees, and the spigot size should match the amount of feed to the cyclone to maintain an air core and prevent roping."
+q23,real,0.028,0.342,False,The d50 cut point refers to the size of particle where 50% of particles are smaller and 50% are larger.
+q23,planted_error,0.003,0.967,True,The d157 cut point refers to the size of particle where 50% of particles are smaller and 50% are larger.
+q24,real,0.986,0.001,False,The maximum feed pressure for a 400 mm cyclone is 200 kPa.
+q24,planted_error,0.949,0.012,False,The maximum feed pressure for a 1207 mm cyclone is 200 kPa.
+q25,real,0.967,0.003,False,Linatex recommend internal inspections every two months.
+q26,real,0.982,0.002,False,People are protected from burn hazards on hot surfaces by wearing protective gloves.
+q26,planted_error,0.302,0.366,False,People are not protected from burn hazards on hot surfaces by wearing protective gloves.
+q26,real,0.373,0.001,False,Protection against burns is also provided by ensuring the temperature has dropped properly before touching the device.
+q26,planted_error,0.011,0.867,True,Protection against burns is not also provided by ensuring the temperature has dropped properly before touching the device.
+q27,real,0.994,0.001,False,"The responsibility lies with the Shipowner, the Charterer, the Master, and the Crew to take preventive actions on the basis of the advisories given."
+q28,real,0.02,0.002,False,"When the DG Comm Centre receives a cyclone or storm warning, they inform N.A and N.S (Casualty & Response) by phone and forward the warning to Indian shipping companies, charterers, and Indian ship-owners associations such as ICCSA, INSA."
+q28,real,0.986,0.001,False,"The message should entail specific instructions towards safety of life, environment, and property at sea during the passage of the cyclone."
+q28,planted_error,0.005,0.603,True,"The message should not entail specific instructions towards safety of life, environment, and property at sea during the passage of the cyclone."

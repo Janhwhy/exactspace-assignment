@@ -115,12 +115,17 @@ def predict_arima(y: pd.Series, train_end: str, origins: pd.DatetimeIndex,
     return pd.DataFrame(preds, index=origins, columns=range(1, H + 1))
 
 
+def _train_rows(X: pd.DataFrame, train_end: str) -> pd.DatetimeIndex:
+    """Training timestamps up to train_end, minus rows whose target window crosses it (no leakage)
+    and rows without a current value."""
+    tr = X.loc[:train_end].index
+    return tr[(tr <= pd.Timestamp(train_end) - pd.Timedelta(minutes=5 * H)) & X.loc[tr, "lag_0"].notna()]
+
+
 def run(df: pd.DataFrame, threshold: float):
     X = make_features(df)
     Y = targets(df)
-    tr = X.loc[:TRAIN_END].index
-    # drop train rows whose target window crosses into test (no leakage) and rows w/o current value
-    tr = tr[(tr <= pd.Timestamp(TRAIN_END) - pd.Timedelta(minutes=5 * H)) & X.loc[tr, "lag_0"].notna()]
+    tr = _train_rows(X, TRAIN_END)
     origins = X.loc[TEST_START:].index[::ORIGIN_EVERY]
     origins = origins[X.loc[origins, "lag_0"].notna() & Y.loc[origins].notna().all(axis=1)]
     assert origins.min() > tr.max()
@@ -168,3 +173,60 @@ def metrics_by_horizon(fc: pd.DataFrame, subset: str | None = None) -> pd.DataFr
         out[f"{m}_rmse"] = np.sqrt((e ** 2).groupby(g["horizon"]).mean())
         out[f"{m}_mae"] = e.abs().groupby(g["horizon"]).mean()
     return pd.DataFrame(out).round(2)
+
+
+
+# Second fold for the dense evaluation: the 2020 test period has only 6 stops/restarts,
+# so the transition comparison also runs on 2019 (11 stops) with a model trained on 2017-2018.
+FOLDS = {"test 2020 (train 2017-2019)": (TRAIN_END, TEST_START, None),
+         "test 2019 (train 2017-2018)": ("2018-12-31 23:55", "2019-01-01 00:00", "2019-12-31 23:55")}
+
+
+def run_dense(df: pd.DataFrame, threshold: float, models_2020: dict, n_boot: int = 2000) -> pd.DataFrame:
+    """Origin at every 5-min step instead of every hour (persistence and GBM only), on two folds.
+
+    The hourly evaluation has 12 transition origins, too few to rank models. Every-step
+    origins give 12x the samples, but they are strongly autocorrelated, so the table
+    reports the number of separate regime episodes next to the origin count, and a
+    95% interval for the RMSE difference from a block bootstrap over calendar days.
+    ARIMA is left out: re-filtering it at ~100k origins costs over half an hour, and it
+    was not competitive outside steady running in the hourly evaluation.
+    """
+    X = make_features(df)
+    Y = targets(df)
+    rng = np.random.default_rng(SEED)
+    rows = []
+    for fold, (train_end, test_start, test_end) in FOLDS.items():
+        if fold.startswith("test 2020"):
+            models = models_2020
+        else:
+            tr = _train_rows(X, train_end)
+            models = fit_gbm(X.loc[tr], Y.loc[tr])
+        origins = X.loc[test_start:test_end].index
+        origins = origins[X.loc[origins, "lag_0"].notna() & Y.loc[origins].notna().all(axis=1)]
+        y = Y.loc[origins].to_numpy()
+        preds = {"persistence": np.repeat(X.loc[origins, "lag_0"].to_numpy()[:, None], H, axis=1),
+                 "gbm": np.column_stack([models[h].predict(X.loc[origins]) for h in range(1, H + 1)])}
+        sq = {m: ((p - y) ** 2).sum(axis=1) for m, p in preds.items()}  # per origin, summed over horizons
+        ab = {m: np.abs(p - y).sum(axis=1) for m, p in preds.items()}
+        reg = regime(df, origins, threshold).to_numpy()
+        contiguous = np.r_[False, np.diff(origins.asi8) == pd.Timedelta("5min").value]
+        for name in ["all", "steady_running", "disturbed", "transition", "shut_down"]:
+            sel = np.ones(len(origins), bool) if name == "all" else reg == name
+            if not sel.any():
+                continue
+            d = pd.DataFrame({"day": origins.normalize()[sel], **{m: v[sel] for m, v in sq.items()}}).groupby("day")
+            sums, cnt = d.sum(), d.size().to_numpy() * H
+            idx = rng.integers(0, len(cnt), size=(n_boot, len(cnt)))
+            boot = {m: np.sqrt(sums[m].to_numpy()[idx].sum(1) / cnt[idx].sum(1)) for m in preds}
+            prev = np.r_[False, sel[:-1]] & contiguous
+            row = {"fold": fold, "subset": name, "origins": int(sel.sum()),
+                   "separate_episodes": int((sel & ~prev).sum()), "days": len(cnt)}
+            for m in preds:
+                row[f"{m}_rmse"] = round(float(np.sqrt(sq[m][sel].sum() / (sel.sum() * H))), 2)
+                row[f"{m}_mae"] = round(float(ab[m][sel].sum() / (sel.sum() * H)), 2)
+            row["gbm_minus_persistence_rmse"] = round(row["gbm_rmse"] - row["persistence_rmse"], 2)
+            lo, hi = np.percentile(boot["gbm"] - boot["persistence"], [2.5, 97.5])
+            row["ci95_low"], row["ci95_high"] = round(float(lo), 2), round(float(hi), 2)
+            rows.append(row)
+    return pd.DataFrame(rows)

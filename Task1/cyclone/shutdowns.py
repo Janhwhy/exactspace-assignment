@@ -54,19 +54,20 @@ def _runs(mask: pd.Series) -> pd.DataFrame:
     return pd.DataFrame({"start": starts, "end": ends})
 
 
-def detect(df: pd.DataFrame, threshold: float | None = None) -> tuple[pd.DataFrame, pd.Series, float]:
+def detect(df: pd.DataFrame, threshold: float | None = None, hysteresis: float = HYSTERESIS_C,
+           merge_gap: pd.Timedelta = MERGE_GAP, min_event: pd.Timedelta = MIN_EVENT) -> tuple[pd.DataFrame, pd.Series, float]:
     """Return (shutdown events, per-timestamp off mask, threshold used)."""
     temp = df[TEMP]
     if threshold is None:
         threshold = otsu_threshold(temp.to_numpy())
-    off = pd.Series(_hysteresis(temp.to_numpy(), threshold, threshold + HYSTERESIS_C), index=df.index)
+    off = pd.Series(_hysteresis(temp.to_numpy(), threshold, threshold + hysteresis), index=df.index)
 
     ev = _runs(off)
     # merge stops separated by a very short restart
     gap = ev["start"] - ev["end"].shift()
-    group = (gap.isna() | (gap >= MERGE_GAP)).cumsum()
+    group = (gap.isna() | (gap >= merge_gap)).cumsum()
     ev = ev.groupby(group).agg(start=("start", "first"), end=("end", "last")).reset_index(drop=True)
-    ev = ev[ev["end"] - ev["start"] >= MIN_EVENT].reset_index(drop=True)
+    ev = ev[ev["end"] - ev["start"] >= min_event].reset_index(drop=True)
 
     # rebuild the mask from the final events so both views agree
     off = pd.Series(False, index=df.index)
@@ -186,4 +187,18 @@ def sensitivity(df: pd.DataFrame, base: float, deltas=(-150, -100, -50, 0, 50, 1
         ev, _, _ = detect(df, base + d)
         out.append({"threshold_c": round(base + d), "events": len(ev),
                     "downtime_h": round(ev["duration_h"].sum(), 1)})
+    return pd.DataFrame(out)
+
+
+def sensitivity_grid(df: pd.DataFrame, base: float, hysteresis=(50.0, 100.0, 150.0),
+                     merge_gaps=("30min", "1h", "2h"), min_events=("15min", "30min", "1h")) -> pd.DataFrame:
+    """Events and downtime for every combination of the three event rules (threshold fixed at `base`)."""
+    out = []
+    for hy in hysteresis:
+        for mg in merge_gaps:
+            for me in min_events:
+                ev, _, _ = detect(df, base, hysteresis=hy, merge_gap=pd.Timedelta(mg), min_event=pd.Timedelta(me))
+                out.append({"hysteresis_c": hy, "merge_gap": mg, "min_length": me,
+                            "is_default": hy == HYSTERESIS_C and pd.Timedelta(mg) == MERGE_GAP and pd.Timedelta(me) == MIN_EVENT,
+                            "events": len(ev), "downtime_h": round(ev["duration_h"].sum(), 1)})
     return pd.DataFrame(out)

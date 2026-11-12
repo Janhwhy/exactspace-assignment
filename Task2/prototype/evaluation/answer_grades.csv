@@ -1,29 +1,43 @@
 qid,grade,answer_key,note
-q01,correct,56df12d58d,"opacity, inlet gas velocity and pressure differential: the three primary indicators in Table B-12"
-q02,correct,2999ff7e33,"pressure differential is primarily a function of velocity, so it is a surrogate (p.2)"
-q03,partial,fd0eacd43b,by design: the documents never say what a draft drop means; the answer reports what they say about pressure differential
-q04,correct,bc816e80ab,check system settings (especially the fan) and pipes for stuck rags/newspaper (p.17)
-q05,correct,b573206d3d,70-95% depending on dust type and extraction conditions (p.10)
-q06,correct,2e642a01d6,"-25 to +50 C, humidity <60% (p.6)"
-q07,partial,34e4a8bf12,"gives 'flow velocity too high -> lower it' but misses the second listed cause, improper installation (p.7)"
-q08,correct,48420fc2ea,no more than 10 deg horizontally (and front-to-back); answer also contains noisy remarks about irrelevant sources
-q09,correct,4c7d3db0c4,too low: ash accumulation and poor centrifugation; too high: hot ash transport and poor filtration (p.11)
-q10,correct,035b7a64fb,"end of season shutdown; shut off power, let it cool, empty and clean, rust inhibitor (p.13)"
-q11,correct,6bec1c0b29,all six start-up steps in order (p.11)
-q12,correct,b633fa84ff,no moving parts so no lubrication or periodic servicing; examine regularly for wear (p.11)
-q13,partial,2b4bbdc2a0,states the zone 22 / ATEX category 3D requirement but misses the actual answer: an external grounding wire must be connected on site (p.12)
-q14,partial,bcdb44d0b3,"gives the fan impeller inspection but misses the second six-monthly item, internal inspection of the cyclone body for wear (p.12)"
-q15,correct,557013b3f0,every fourteen months or less (p.12)
-q16,wrong,3ff2e7b738,"attaches G&G's 70-95% efficiency (another manual) to Dustair's M type and garbles H; misses the p.8 summary G = high throughput/low efficiency, M = medium/medium, H = low throughput/high efficiency"
-q17,wrong,3c39ade461,"two of three causes (wiring, starter overloads) come from the 'fan motor won't start' row; the insufficient-airflow row lists fan rotation, loose door, dampers, obstructed inlets, leaks, plugged ducts (p.28)"
-q18,correct,d3db2b55b3,"fine or low-density dust: cyclone only a pre-cleaner, secondary filtration may be required (p.8)"
-q19,partial,263dc05335,describes the adjustment procedure and the deflection check but misses that tension should be checked with a tester or spring scale (p.26)
-q20,correct,e1362a838e,"NLI guard rejected the generated answer (it turned a 120 F maximum into a 'range'); the extractive passage shown answers the question: turn on blower, adjust dampers, check gates/doors/lids (p.23)"
-q21,correct,ae020d969f,spigot too small -> flare angle closes -> air core collapses -> solid 'roping' discharge (p.4)
-q22,correct,000f960e1a,"NLI guard rejected the generated answer (correct claim, but cited the wrong passage); the extractive passage shown says the spigot does not affect the d50 (p.4)"
-q23,wrong,84c24e4cd1,"defines d50 as the size with 50% of particles smaller/larger (a p50 grading), which the source explicitly distinguishes from d50: the size with a 50:50 chance of reporting to underflow or overflow (sect7a p.3)"
-q24,wrong,ff42e3a315,says 200 kPa; the table gives 300 kPa for cyclones up to 400 mm (200 kPa is the 400-600 mm row) (p.5)
-q25,partial,ddd24ac827,contains the right fact (internal inspection every two months until the wear rate is known) plus an unsupported 'monthly' claim and a stray NOT_FOUND
-q26,correct,484f4d8cd7,"burns from parts that get hot in operation; don't touch until cooled, wear protective gloves (p.13)"
-q27,correct,d492013e93,"shipowner, charterer, master and crew (8.6)"
-q28,correct,a3bdcc508c,"informs N.A and N.S by phone and forwards the warning to shipping companies, charterers and owners' associations (section 8)"
+q01,correct,b569c9c1f0,"opacity, inlet velocity and pressure differential: the three primary indicators (B.12 p.1)"
+q02,correct,6f8a3ac387,"pressure differential is primarily a function of velocity, so it is a surrogate (p.2)"
+q03,partial,7dd04a51ae,by design: no document says what a draft drop means; the system says so and lists the closest passages (B.12 pp.2-3)
+q04,correct,ba5209e9c0,check system settings (especially the fan) and pipes for stuck rags/newspaper (p.17)
+q05,correct,b1f27bfb65,70-95% depending on dust type and extraction conditions (p.10)
+q06,correct,78bd0e9942,the checks rejected both generated attempts (one was only a citation marker); the extractive passage shown gives -25 to +50 C and humidity <60% (p.6)
+q07,correct,98501876f7,both causes from the troubleshooting table row: flow velocity too high (lower it) and improper installation (correct it) (p.7)
+q08,correct,c9c226f4d8,the checks rejected the generated answer (it attributed the 10 deg tilt to the Dustair manual); the extractive TLV passage shown gives the 10 deg tolerance (p.6)
+q09,correct,945e63c8bd,too low: ash accumulation and poor centrifugation; too high: hot ash transport and poor filtration (p.11)
+q10,correct,6f7c6d27a9,"end of season shutdown; shut off power, let it cool, rust inhibitor (p.13)"
+q11,correct,a138be5efd,all six start-up steps in order (p.11)
+q12,correct,80c9f21cfa,no moving parts so no lubrication or periodic servicing; examine regularly for wear (p.11)
+q13,partial,110bcd1dcf,says grounding is required for zone 22 / ATEX category 3D but not what it is: an external grounding wire connected on site (p.12)
+q14,partial,85a45c44d8,"fan impeller inspection, then a vague 'mechanical integrity' item instead of the internal inspection of the cyclone body for wear (p.12)"
+q15,correct,9357cf98dc,every fourteen months (p.12; the source says 'or less')
+q16,partial,d418acb80d,"no longer mixes manuals, but says G has a larger body diameter (the source: G's inlet speed rises with body diameter) and misses the p.8 summary G = high throughput/low efficiency, M = medium, H = low throughput/high efficiency"
+q17,correct,246cdc0f7c,"6 of the 7 causes in the insufficient-airflow row (misses fan rotation backwards), none from other rows (p.28)"
+q18,correct,1dc7f205c9,"cyclone only a pre-cleaner for fine or low-density dust, secondary filtration may be required (p.8)"
+q19,partial,ef9344222e,"adjustment procedure and deflection check, but misses checking the tension with a tester or spring scale (p.26)"
+q20,correct,f0ca86d85c,"turn on the blower, adjust dampers, check gates/doors/lids, watch the exhaust (p.23)"
+q21,partial,29d7f0640f,"spigot too small -> air core collapses -> roping is right, but it adds 'or too large' as a cause; the source says a too-large spigot gives a wet underflow, not roping (p.4)"
+q22,wrong,7dd04a51ae,answered not found; p.4 says the spigot does not change the d50
+q23,wrong,fae1c827c2,"defines d50 as the size with 50% of particles smaller/larger (a p50 grading), which the source distinguishes from d50: the size with a 50:50 chance of reporting to underflow or overflow (p.3)"
+q24,wrong,c4c07cad1f,says 200 kPa although the whole table was in context; the table gives 300 kPa for cyclones up to 400 mm (p.5)
+q25,correct,807314b84d,internal inspection every two months (p.6; drops 'until the wear rate is established')
+q26,correct,1852ebdc92,protective gloves; don't touch until the temperature has dropped (p.13)
+q27,correct,40d88ac23e,"shipowner, charterer, master and crew (8.6)"
+q28,correct,26bd30643d,"informs N.A and N.S by phone and forwards the warning to shipping companies, charterers and owners' associations (section 8)"
+h01,correct,4987cd5c14,30 psig or greater across the pump (Armstrong p.1)
+h02,wrong,7dd04a51ae,answered not found; the WoodMaster manual says fumes must not exceed 536 F (p.4)
+h03,correct,c0f15a068f,differential switch with intervention threshold no higher than 30 mA (p.6)
+h04,correct,a25e9e44cf,feed box about 12 months if the spigot lasts four (p.7)
+h05,correct,037b3c530d,all five feed-fluctuation causes (p.6)
+h06,correct,f560a43c59,the NLI guard rejected the generated answer; the extractive passage shown gives 40-100 kPa (p.7)
+h07,correct,63124788ce,"both causes (unbalanced rotating parts, deposits bonded on the fan rotor) and both remedies (p.17)"
+h08,correct,f32003c10a,disconnect power and allow to cool (p.12)
+h09,correct,20409fef57,2800 rpm and 0.5 m3/s (p.20)
+h10,partial,e8547d9add,"2 of the 6 listed causes (input power, wiring); misses overloads, open cone discharge, rotation, damper (p.28)"
+h11,wrong,827473cba5,"the attribution check rejected both attempts; the extractive passage shown is the contents page, which doesn't answer (p.9 does)"
+h12,wrong,38189e4337,the attribution check rejected both attempts; the extractive passage stops before the zone 22 / category 3D requirement (p.12)
+h13,correct,c88e6da514,immediate automatic stop (p.16)
+h14,correct,6cd3a85e4f,"20-80 % humidity, -20 to +40 C, non-explosive unless designed for it (p.15)"

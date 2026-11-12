@@ -1,0 +1,9 @@
+rule,trigger,lead,success_means,firings,per_running_week,successes,precision_pct,targets,targets_caught
+1. fan-off alarm,median of the 3 drafts > -60 Pa for 2 samples while inlet gas > threshold; not within 1 h of a restart,0: detects the stop 10 min in,inlet gas then falls > 30 C (the gas flow really stopped),196,1.34,182,92.9,196,196
+2. escalate: becoming a shutdown,fan-off alarm still active after 60 min and inlet gas < 700 C,median 4.7 h before the line is cold,the fan stop ends in a shutdown,34,0.23,20,58.8,39,20
+precursor: IF flag,IF flag,15-120 min,fan stops inside the lead window,471,3.21,28,5.9,196,29
+precursor: IF flag,IF flag,0-15 min,fan stops inside the lead window,471,3.21,93,19.7,196,93
+precursor: draft weakening,draft weakening,15-120 min,fan stops inside the lead window,1163,7.93,36,3.1,196,37
+precursor: draft weakening,draft weakening,0-15 min,fan stops inside the lead window,1163,7.93,96,8.3,196,96
+precursor: IF flag AND draft weakening,IF flag AND draft weakening,15-120 min,fan stops inside the lead window,202,1.38,15,7.4,196,16
+precursor: IF flag AND draft weakening,IF flag AND draft weakening,0-15 min,fan stops inside the lead window,202,1.38,97,48.0,196,97
